@@ -1,10 +1,10 @@
-all: msc.pdf
+all: msg.pdf
 
-msc.pdf: msc.tex msc.bib cropfigures
-	pdflatex msc
-	bibtex msc
-	pdflatex msc
-	pdflatex msc
+msg.pdf: msg.tex msg.bib cropfigures
+	pdflatex msg
+	bibtex msg
+	pdflatex msg
+	pdflatex msg
 
 _figures := stokesdomain idoaction
 figures := $(addprefix genfigs/, $(addsuffix .pdf, $(_figures)))
