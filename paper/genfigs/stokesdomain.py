@@ -8,8 +8,6 @@ plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "cm"
 
 fsize=18.0
-smallfsize=14.0
-extrasmallfsize=12.0
 bigfsize=20.0
 
 def genbasicfig(xshift=0.0):

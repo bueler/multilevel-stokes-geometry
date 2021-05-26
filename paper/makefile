@@ -6,7 +6,7 @@ msg.pdf: msg.tex msg.bib cropfigures
 	pdflatex msg
 	pdflatex msg
 
-_figures := stokesdomain idoaction
+_figures := stokesdomain idoaction extruded
 figures := $(addprefix genfigs/, $(addsuffix .pdf, $(_figures)))
 
 cropfigures: $(figures)
@@ -16,6 +16,9 @@ cropfigures: $(figures)
 
 genfigs/stokesdomain.pdf genfigs/idoaction.pdf &: genfigs/stokesdomain.py
 	(cd genfigs/ && python3 stokesdomain.py)
+
+genfigs/extruded.pdf &: genfigs/extruded.py
+	(cd genfigs/ && python3 extruded.py)
 
 .PHONY: clean writeout cropfigures
 
