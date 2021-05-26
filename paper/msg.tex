@@ -210,38 +210,36 @@ In Sections \ref{sec:fe}--\ref{sec:mcdstokes} we will construct and demonstrate 
 
 \section{Weak form and the ice dynamics operator} \label{sec:weakido}
 
-Recall that the weak form of a PDE states that a certain functional, constructed by multiplying by a test function and integrating by parts, is zero.  Both the solution and the test functions come from identified function spaces, namely Sobolev spaces \cite{Evans2010}.  Here we denote by $W^{\text{k},\text{r}}$ the Sobolev space of functions on which have $k$ derivatives which are $r$th-power integrable.
+The weak form of the fixed-geometry Glen-Stokes model for ice flow, which extends the linear Stokes weak form \cite{Elmanetal2014} to regularized power-law rheology, is relatively well-known \cite{IsaacStadlerGhattas2015,JouvetRappaz2011,Lengetal2012}, and we summarize it here.  Then we will address the weak form of the SIGP.
 
-The weak form of the fixed-geometry Glen-Stokes model for ice, which extends the better-known linear Stokes weak form \cite{Elmanetal2014} to regularized power-law rheology, is relatively well-known \cite{IsaacStadlerGhattas2015,JouvetRappaz2011,Lengetal2012}, and we summarize it here.  Suppose that $\Lambda \subset \RR^{d+1}$ is fixed domain on which we prescribe a Dirchlet condition $\bu=0$ on a portion of the boundary, and where the remainder of the boundary (Neumann boundary) is stress-free.  Let $\pp=(1/n)+1$ as before, and let $\qq=(1-\pp^{-1})^{-1}=n+1$ be the conjugate exponent, so that $\pp^{-1}+\qq^{-1}=1$. (Note $\pp=4/3$ and $\qq = 4$ if $n=3$.)  Let $W_0^{1,\pp}(\Lambda)^{d+1}$ be the space of velocity functions which are zero along the Dirichlet boundary.  Let
+Denote by $W^{\text{k},\text{r}}$ the Sobolev space \cite{Evans2010} of functions with $k$ derivatives which are $r$th-power integrable.  Suppose for the moment that $\Lambda \subset \RR^{d+1}$ is a fixed, bounded domain on which we prescribe a Dirchlet condition $\bu=0$ on some positive-measure portion of the boundary, and otherwise suppose the boundary is stress-free (Neumann boundary).  Let $\pp=(1/n)+1$ as in \eqref{eq:regeffvisc}, and let $\qq=(1-\pp^{-1})^{-1}=n+1$ be the conjugate exponent; $\pp=4/3$ and $\qq = 4$ if $n=3$.  Let $W_0^{1,\pp}(\Lambda)^{d+1}$ be the space of velocity functions, zero along the Dirichlet boundary, and
 \begin{equation}
-\mathcal{M}_{\text{dyn}} = W_0^{1,\pp}(\Lambda)^{d+1} \times L^\qq(\Lambda)  \label{eq:mixed}
+\mathcal{M}_{\text{GS}} = W_0^{1,\pp}(\Lambda)^{d+1} \times L^\qq(\Lambda)  \label{eq:mixed}
 \end{equation}
-be the (mixed) space of admissible velocity and pressure pairs, the dynamical variables.  The Glen-Stokes weak form is the statement that $(\bu,p) \in \mathcal{M}_{\text{dyn}}$ should satisfy
+be the (mixed) space of admissible velocity and pressure pairs.  The Glen-Stokes weak form is the statement that $(\bu,p) \in \mathcal{M}_{\text{GS}}$ should satisfy
 \begin{equation}
-F_{\text{dyn}}(\bu,p)[\bv,q] = \int_\Lambda 2 \nu_\eps D\bu : D\bv - p \Div\bv - (\Div\bu) q - \rhoi \bg \cdot \bv\,d\bx = 0 \label{eq:glenstokesweak}
+F_{\text{GS}}(\bu,p)[\bv,q] = \int_\Lambda 2 \nu_\eps D\bu : D\bv - p \Div\bv - (\Div\bu) q - \rhoi \bg \cdot \bv\,d\bx = 0 \label{eq:glenstokesweak}
 \end{equation}
-for all $(\bv,q) \in \mathcal{M}_{\text{dyn}}$; as before the effective viscosity $\nu_\eps$ is defined by \eqref{eq:regeffvisc}.  Jouvet and Rappaz \cite{JouvetRappaz2011} have proven that this formulation is well-posed if $\Lambda$ is bounded, the Neumann boundary is $C^1$, and the Dirichlet boundary is nonempty.  In particular they show \eqref{eq:glenstokesweak} is equivalent to minimization of a coercive functional over the divergence-free subspace, and also that there is a unique pressure $p\in L^\qq(\Lambda)$.
+for all $(\bv,q) \in \mathcal{M}_{\text{GS}}$.
 
-Going beyond predetermined ice geometry, we are interested in finding a triple $s,\bu,p$ which solves the weak form of \eqref{eq:strongform}, where $s$ is the surface elevation.  Suppose $\Omega \subset \RR^d$ is the map-plane domain, and suppose the bed elevation $b$ is in $C^1(\overline{\Omega}) \subset W^{1,\qq}(\Omega)$.  Let
+Jouvet and Rappaz \cite{JouvetRappaz2011} prove that this Glen-Stokes formulation is well-posed under the above assumptions if also the Neumann boundary is $C^1$.  In particular they show \eqref{eq:glenstokesweak} is equivalent to minimization of a convex and coercive functional over the divergence-free subspace, but also that there is a unique pressure $p\in L^\qq(\Lambda)$.
+
+However, we seek to go beyond this dynamical problem on predetermined ice geometry.  We are interested in finding a triple $s,\bu,p$ which solves \eqref{eq:strongform}, or rather its weak form which we now propose.  Again suppose $\Omega \subset \RR^d$ is a fixed map-plane domain with $C^1$ boundary, and that the bed elevation $b$ is in $W^{1,\qq}(\Omega)$.  Because of the $C^1$ boundary, the Sobolev space $W^{1,\qq}(\Omega)$ supports a linear trace operator which defines $f|_{\partial \Omega}$ for $f \in W^{1,\qq}(\Omega)$ \cite[Section 5.5]{Evans2010}.  Let
 \begin{equation}
 \mathcal{K} = \{s \in W^{1,\qq}(\Omega) \,:\, s \ge b \, \text{ and } \, s\big|_{\partial\Omega} = b\big|_{\partial\Omega}\}  \label{eq:Kconstraintset}
 \end{equation}
-be the set of admissible surface elevations of our isolated glacier or ice sheet.  This set is closed and convex.
-
-As noted earlier it is not clear that the correct Sobolev space is identified in \eqref{eq:Kconstraintset}.  In fact we suppose when needed that
+be the closed and convex set of admissible surface elevations of an isolated glacier or ice sheet.  However, it is not clear that the correct Sobolev space has been identified in \eqref{eq:Kconstraintset}, and in fact we must further suppose that
 \begin{equation}
-s\in \mathcal{K} \text{ defines an icy domain } \Lambda_s \text{ which has piecewise-$C^1$ boundary.} \label{eq:quixotic}
+s\in \mathcal{K} \text{ defines an icy domain } \Lambda_s \text{ which has a $C^1$ free surface.} \label{eq:quixotic}
 \end{equation}
-This quixotic assumption connects the known theory of shallow ice sheet well-posedness \cite{JouvetBueler2012}, which motivates definition \eqref{eq:Kconstraintset}, to the widely-used numerical construction of evolving ice sheet geometries from Glen-Stokes dynamics \cite{Jouvetetal2008,Lengetal2012}.  Assumption \eqref{eq:quixotic} would follow from a sufficiently-strong regularity result for the theory presented in the current paper, which we cannot offer at this time, and subject to the no-overhangs hypothesis which might follow from the inclusion of non-fluid fracture processes (previous section).
+Quixotic assumption \eqref{eq:quixotic} would follow from a sufficiently-strong regularity result for the theory of the current paper, which we cannot offer.  However, the existing theory of shallow ice sheet well-posedness \cite{JouvetBueler2012} includes a version of definition \eqref{eq:Kconstraintset},\footnote{In \cite{JouvetBueler2012} the $2\qq/(\qq-1)=8/3$ power of the ice thickness is in $W^{1,\qq}(\Omega)$.} and in that shallow theory $s$ solves an elliptic equation and is thus smooth, at least interior to the free boundary.
 
-If $\partial \Lambda$ is piecewise $C^1$ then the Sobolev space $W^{1,\pp}(\Lambda)$ supports a linear trace operator $T:W^{1,\pp}(\Lambda) \to L^\pp(\partial \Lambda)$ which defines $T(f) = f|_{\partial \Lambda}$ \cite[Section 5.5]{Evans2010}.
-
-With the trace in mind we define the ice dynamics operator (IDO), a fundamental concept for our work (Figure \ref{fig:idoaction}).  For each surface elevation function $s \in \mathcal{K}$ the IDO result $\Phi(s)$ is the normal component of the upper-surface trace of the unique velocity solution $\bu$ of \eqref{eq:glenstokesweak} over the icy domain $\Lambda_s$, extended by zero to all of $\Omega$ (as in \eqref{eq:surfacevelocity}):
+We may now define the ice dynamics operator (IDO), a map using the trace of the velocity solution to the Glen-Stokes problem above (Figure \ref{fig:idoaction}).  For each surface elevation function $s \in \mathcal{K}$ the IDO result $\Phi(s)$ is the normal component of the upper-surface trace of the unique velocity solution $\bu$ of \eqref{eq:glenstokesweak} over the icy domain $\Lambda_s$, but extended by zero to all of $\Omega$:
 \begin{equation}
-\Phi(s) = \begin{cases} \bu\big|_{\overline{\partial} \Lambda_s} \cdot \bn_s & s(x,y) > b(x,y), \\
-                        \bzero & \text{otherwise}. \end{cases} \label{eq:ido}
+\Phi(s) = \begin{cases} \bu|_{\overline{\partial} \Lambda_s} \cdot \bn_s, & s > b, \\
+                        \bzero, & \text{otherwise}, \end{cases} \label{eq:ido}
 \end{equation}
-Note that the output $\Phi(s)$ may jump at the glacier margin; we only expect $\Phi(s) \in L^\pp(\Omega)$.
+where $\bu|_{\overline{\partial} \Lambda_s}$ denotes a trace operator on $W^{1,\pp}(\Lambda_s)^{d+1}$; compare \eqref{eq:mixed}.  Note that the output $\Phi(s)$, a scalar function on $\Omega$, may jump or have other singularities at the glacier margin, but we will only need $\Phi(s)$ to be in the dual of $W^{1,\qq}(\Omega)$, thus permitting substantial irregularities.
 
 \begin{figure}[t]
 \begin{center}
@@ -251,77 +249,94 @@ Note that the output $\Phi(s)$ may jump at the glacier margin; we only expect $\
 \label{fig:idoaction}
 \end{figure}
 
-Using the IDO, and recalling that the CMB $a$ is defined on all of $\Omega$, we may re-write the strong form \eqref{eq:strongform} as an NCP but with a hidden dynamical problem:
+Using the IDO, and recalling that the CMB $a$ is defined on all of $\Omega$, we may immediately re-write the \eqref{eq:strongform} in a simpler strong form, namely an NCP with a hidden dynamical problem:
 \begin{align}
 s - b &\ge 0  \label{eq:idostrongform} \\
 - \Phi(s) - a &\ge 0 \notag \\
 (s - b) (- \Phi(s) - a) &= 0 \notag
 \end{align}
-Here the statements hold on all of $\Omega$, the data $a,b$ are clear, and the solution is the ice surface elevation $z=s(x,y)$.  The velocity and pressure $\bu,p$ are hidden variables within the evaluation of $\Phi(s)$.
+Here the statements hold on all of $\Omega$ and the data $a,b$ are clear.  The solution is the ice surface $z=s(x,y)$, but $\bu,p$ are hidden variables within the evaluation of $\Phi(s)$.
 
-It remains to write NCP \eqref{eq:idostrongform} in weak form.  For $s \in \mathcal{K}$ and $r \in W^{1,\qq}(\Omega)$ we define a functional which is nonlinear in $s$:
+For $s \in \mathcal{K}$ and $r \in W^{1,\qq}(\Omega)$ we next define a functional which is nonlinear in $s$:
 \begin{equation}
 F(s)[r] = - \int_\Omega (\Phi(s) + a)\, r \,dx dy. \label{eq:sigpfunctional}
 \end{equation}
-One computes $F(s)[r]$ by defining the icy domain $\Lambda_s$ as in \eqref{eq:lambdas}, then solving the (weak form) Glen-Stokes problem \eqref{eq:glenstokesweak}, then evaluating the normal component of the surface trace of the velocity to compute the IDO \eqref{eq:ido}, and then integrating the SKE quantity $\Phi(s) + a$ against the test function $r$.  Implicit in formula \eqref{eq:sigpfunctional} is the assumption that $\Phi(s) + a$ is sufficiently regular to be in the dual space of $W^{1,\qq}(\Omega)$, but this allows significant singularities.
+One computes $F(s)[r]$ by defining the icy domain $\Lambda_s$ \eqref{eq:lambdas}, then solving the (weak form) Glen-Stokes problem \eqref{eq:glenstokesweak}, then evaluating the normal component of the surface trace of the velocity \eqref{eq:ido} to compute the IDO $\Phi(s)$, and then integrating the SKE quantity $\Phi(s) + a$ against the test function $r$.  Implicit in \eqref{eq:sigpfunctional} is that $\Phi(s) + a$ has minimal regularity; it need only be in the dual space of $W^{1,\qq}(\Omega)$.
 
-The SIGP weak form is a variational inequality (VI) \cite{KinderlehrerStampacchia1980} which should determine $s\in\mathcal{K}$:
+Finally, the SIGP weak form is the following variational inequality (VI) \cite{KinderlehrerStampacchia1980} which should determine $s\in\mathcal{K}$:
 \begin{equation}
 F(s)[r - s] \ge 0 \quad \text{for all $r \in \mathcal{K}$.}  \label{eq:sigpweakform}
 \end{equation}
-This VI has a shallow (SIA) analog, for which existence has been proven \cite{JouvetBueler2012}, but in that case the functional is an integral of powers of the thickness $s-b$ and the surface slope $\grad s$, thus locally-computable.  Here the computation of $F$ in \eqref{eq:sigpfunctional} is non-local and expensive; to evaluate $F(s)[r]$ one must solve the Glen-Stokes problem on the given $z=s(x,y)$ geometry.
+This VI has a shallow (SIA) analog, for which existence has been proven \cite{JouvetBueler2012}, but in that case the functional is an integral of powers of the thickness $s-b$ and the surface slope $\grad s$, thus locally-computable.  Here, by contrast, the computation of \eqref{eq:sigpfunctional} is non-local and expensive: to evaluate $F(s)[r]$ one must solve Glen-Stokes problem \eqref{eq:glenstokesweak} on the given $z=s(x,y)$ geometry.
 
-To the best of our knowledge VI \eqref{eq:sigpweakform} does \emph{not} arise as a constrained minimization.  The general-bed, steady SIA model is also not a minimization, except in the flat-bed case \cite{JouvetBueler2012}.  Despite this situation, to understand \eqref{eq:sigpweakform} one may analogize to minimization over the closed and convex set $\mathcal{K}$, regarding $F(s)$ as a gradient-like vector.  Definition \eqref{eq:sigpfunctional} can be interpreted as a dual pairing of $F(s)$ and $r$, thus roughly an inner product, in which case the VI says that $s$ is located in $\mathcal{K}$, generically on $\partial\mathcal{K}$, at a place where $F(s)$ points directly into $\mathcal{K}$.  In geometrical analogy, \eqref{eq:sigpweakform} says that the ``angle'' between $F(s)$ and an arbitrary vector $r-s$ pointing into $\mathcal{K}$ is at most $90^\circ$.
+Definition \eqref{eq:sigpfunctional} is a dual pairing of $F(s)$ and $r$, thus roughly an inner product.  VI \eqref{eq:sigpweakform} says that $s$ is located in $\mathcal{K}$, generically on $\partial\mathcal{K}$, at a place where $F(s)$ points directly into $\mathcal{K}$.  Specifically, in geometrical analogy, \eqref{eq:sigpweakform} says that the ``angle'' between $F(s)$ and an arbitrary vector $r-s$ pointing into $\mathcal{K}$ is at most $90^\circ$.
 
-Thus the SIGP couples the weak forms \eqref{eq:glenstokesweak} and \eqref{eq:sigpweakform}.  It therefore has three fundamental nonlinearities, namely the Glen power-law rheology, the inequality constraint, and the nonlinearity of free-surface flow reflected in the nonlinearity of the operator $\Phi$.  Observe that even the classical obstacle problem for the linear Laplacian operator is nonlinear \cite{KinderlehrerStampacchia1980}, and also that a free-surface flow for Newtonian (linear) rheology produces a nonlinear equation for the flow thickness, e.g.~as expressed in the kinematic wave equation \cite{Ockendonetal2003}.
+It is well-known that some VIs arise as inequality-constrained minimization problems \cite{GraeserKornhuber2009,KinderlehrerStampacchia1980}, but to the best of our knowledge VI \eqref{eq:sigpweakform} does \emph{not} arise in this way.  The general-bed, steady shallow (SIA) model is not a minimization, except in the flat-bed case \cite{JouvetBueler2012}.
 
-In order to numerically solve \eqref{eq:sigpweakform} we will use the (Gateaux) derivative of the functional $F$ in \eqref{eq:sigpfunctional}, which requires differentiating the IDO $\Phi$ in \eqref{eq:ido} as well.  The efficient computation of these derivatives will also involve an important approximation.
+The SIGP weak form \eqref{eq:sigpweakform} is coupled to \eqref{eq:glenstokesweak} through the definition of the IDO $\Phi$.  The problem therefore has three fundamental nonlinearities:
+\renewcommand{\labelenumi}{(\emph{\roman{enumi}})}
+\begin{enumerate}
+\item the Glen power-law rheology,
+\item the inequality constraint, and
+\item the nonlinearity of free-surface flow reflected in the nonlinearity of the operator $\Phi$.
+\end{enumerate}
+Regarding (\emph{ii}), observe that even the classical obstacle problem for the linear Laplacian operator is nonlinear \cite{KinderlehrerStampacchia1980}.  Regarding (\emph{iii}), note that a free-surface flow for Newtonian (linear) rheology produces a nonlinear equation for the flow thickness, e.g.~as expressed in the kinematic wave equation \cite{Ockendonetal2003}.
 
-To compute the derivative of $F$ from \eqref{eq:surfacenormal} and \eqref{eq:sigpfunctional}, suppose $s\in \mathcal{K}$, $\eps>0$, and $t \in W^{1,\qq}(\Omega)$ is such that $s+\eps t \in \mathcal{K}$.  (In other words, both $s$ and $s+\eps t$ must be admissible glacier surface elevations.)  Then
+To numerically solve \eqref{eq:sigpweakform} we will need the (Gateaux) derivative of $F$, which requires differentiating the $\Phi$ as well.  Suppose $s\in \mathcal{K}$, $\eps>0$, and $t \in W^{1,\qq}(\Omega)$ is such that $s+\eps t \in \mathcal{K}$.  (Both $s$ and $s+\eps t$ must be admissible glacier surface elevations.)  From \eqref{eq:sigpfunctional},
 \begin{equation}
-F'(s,t)[r] = \lim_{\eps\to 0^+} \frac{F(s+\eps t)[r] - F(s)[r]}{\eps} = - \int_\Omega \Phi'(s,t)\, r \,dx dy \label{eq:sigpfunctionalderiv}
+F'(s)[t,r] = \lim_{\eps\to 0^+} \frac{F(s+\eps t)[r] - F(s)[r]}{\eps} = - \int_\Omega \Phi'(s)[t]\, r \,dx dy \label{eq:sigpfunctionalderiv}
 \end{equation}
-where a product-rule computation gives
+where a product-rule computation on \eqref{eq:ido} gives
 \begin{align}
-\Phi'(s,t) &= \lim_{\eps\to 0^+} \frac{\bu|_{s+\eps t} \cdot \bn_{s+\eps t} - \bus \cdot \bn_s}{\eps} \label{eq:idoderiv} \\
+\Phi'(s)[t] &= \lim_{\eps\to 0^+} \frac{\bu|_{s+\eps t} \cdot \bn_{s+\eps t} - \bus \cdot \bn_s}{\eps} \label{eq:idoderiv} \\
     &= - \left(\lim_{\eps\to 0^+} \frac{\bu|_{s+\eps t} - \bus}{\eps}\right) \cdot \bn_s + \Phi(s) \cdot \left<t_x,t_y,0\right>. \notag
 \end{align}
-In this computation note that the normal vectors and surface velocities are extended to the whole of $\Omega$; see \eqref{eq:surfacevelocity}.  Observe that $F'$ is straightforward to compute from $\Phi'$.  We will assume that $\Phi'(s,t)$ is in the dual space of $W^{1,\qq}(\Omega)$, thus that \eqref{eq:sigpfunctionalderiv} is finite, but again this allows substantial irregularity.
 
-The new functionals $F'(s,t)$ and $\Phi'(s,t)$ are one-sided directional derivatives in the sense that $s+\eps t$ must be admissible, i.e.~$s+\eps t\ge b$, for all sufficiently-small $\eps>0$.  This requires $t\ge 0$ only on the (active) set where $s=b$.  However, to simplify our considerations we define an $s$-independent set
+Observe that $F'$ is straightforward to compute from $\Phi'$, and we will assume that $\Phi'(s)[t]$ is in the dual space of $W^{1,\qq}(\Omega)$ so that \eqref{eq:sigpfunctionalderiv} is finite.  In \eqref{eq:idoderiv} note that the normal vectors and surface velocities are extended to the whole of $\Omega$; see \eqref{eq:surfacevelocity}.
+
+The new functionals $F'(s)[t,r]$ and $\Phi'(s)[t]$ are one-sided directional derivatives in the sense that $s+\eps t$ must be admissible, i.e.~$s+\eps t\ge b$, for all sufficiently-small $\eps>0$, and this clearly requires $t\ge 0$ on the (active) set where $s=b$.  However, to simplify our considerations we define an $s$-independent set
 \begin{equation}
-\mathcal{D}_+ = \{t \in W^{1,\qq}(\Omega) \,:\, t(x,y) \ge 0\}. \label{eq:infdefectset}
+\mathcal{D}_+ = \{t \in W^{1,\qq}(\Omega) \,:\, t(x,y) \ge 0\}, \label{eq:infdefectset}
 \end{equation}
-Then $\Phi'$ is well-defined on inputs $(s,t) \in \mathcal{K} \times \mathcal{D}_+$ and $F'$ is well-defined for $(s,t,r) \in \mathcal{K} \times \mathcal{D}_+ \times W^{1,\qq}(\Omega)$.
+and $\Phi'(s)[t]$ is well-defined on inputs $(s,t) \in \mathcal{K} \times \mathcal{D}_+$.  Thus $F'(s)[t,r]$ is well-defined for $(s,t,r) \in \mathcal{K} \times \mathcal{D}_+ \times W^{1,\qq}(\Omega)$.
 
-In the next two sections we construct an iterative, multilevel finite element solver for the SIGP.  However, a significant issue arises from formula \eqref{eq:idoderiv}, namely that to compute the difference $\bu|_{s+\eps t} - \bus$, two Glen-Stokes solutions are seemingly required, namely over the ice domains $\Lambda_{s+\eps t}$ and $\Lambda_s$.  The next section includes an approximation scheme which avoids such large numbers of Glen-Stokes solves.
+In the next three sections we will construct an iterative, multilevel finite element solver for SIGP weak form \eqref{eq:sigpweakform}.  When we approximate the true derivative $\Phi'(s)[t]$ by a difference quotient, a significant issue arises because two Glen-Stokes solutions over the ice domains $\Lambda_{s+\eps t}$ and $\Lambda_s$ are seemingly required.  While this would imply a very large numbers of expensive dynamical solves, in Section \ref{sec:smoothers} we propose a less-expensive approximation.
 
 
 \section{Finite element discretization} \label{sec:fe}
 
-Suppose $\mathcal{T}$ is a triangulation of $\Omega$, which we assume is polygonal.  Based on its low expected regularity at the ice margin, assume that surface elevations $s\in \mathcal{K}$ are represented using the piecewise-linear ($P_1$) finite element (FE) space \cite{Elmanetal2014}
-\begin{equation}
-\mathcal{V}^h = \{s:\Omega \to \RR \,:\, s|_T \text{ is linear for each } T \in \mathcal{T}, \text{ and $s$ is continuous}\}. \label{eq:feP1}
-\end{equation}
-(Note \cite{JouvetBueler2012} make the same choice for the SIA problem.)  Let $b^h \in \mathcal{V}^h$ be the discretized bed elevation, e.g.~the $P_1$ interpolant of $b$, and let
+Suppose $\mathcal{T}$ is a triangulation of $\Omega$, which we assume is polygonal.  (If $d=1$ then instead $\mathcal{T}$ denotes an interval decomposition of $\Omega$.)  Based on their low expected regularity at the ice margin, we will represent the surface elevations $s\in \mathcal{K}$ using the piecewise-linear ($P_1$) finite element (FE) space $\mathcal{V}^h = \{s \in C^0(\Omega) : s|_T \text{ is linear if } T \in \mathcal{T}\} \subset W^{1,\qq}(\Omega)$.  Note \cite{JouvetBueler2012} makes the same FE choice for the corresponding shallow problem.
+
+Let $b^h \in \mathcal{V}^h$ be the discretized bed elevation, e.g.~the $\mathcal{V}^h$ interpolant of $b$, and define two closed and convex subsets of $\mathcal{V}^h$:
 \begin{equation}
 \mathcal{K}^h = \{r \in \mathcal{V}^h \,:\, r \ge b^h \text{ and } r|_{\partial\Omega} = b^h|_{\partial\Omega}\}, \qquad \mathcal{D}_+^h = \{t \in \mathcal{V}^h \,:\, t \ge 0\}. \label{eq:feKD}
 \end{equation}
+Let $(x_j,y_j)$ denote the coordinates an arbitrary node of the mesh $\mathcal{T}$, and $\psi_j \in \mathcal{V}^h$ the corresponding hat function, i.e.~such that $\psi_j(x_k,y_k)=\delta_{jk}$ \cite{Elmanetal2014}.
 
-With these FE choices, the discrete SIGP is to compute $s^h \in \mathcal{K}^h$ such that
+With these FE choices, the discrete SIGP computes the FE approximation $s^h \in \mathcal{K}^h$ satisfying
 \begin{equation}
-F^h(s^h)[r - s^h] \ge 0 \quad \text{for all } r \in \mathcal{K}^h  \label{eq:fesigpweakform}
+F^h(s^h)[r - s^h] \ge 0 \quad \text{for all } r \in \mathcal{K}^h , \label{eq:fesigpweakform}
 \end{equation}
-where $F^h(s)[r] = - \int_\Omega (\Phi^h(s) + a)\, r \,dx dy$, essentially as before, but with $\Phi^h$ an FE approximation of the IDO $\Phi$.  (We will compute $\Phi^h$ using a extruded-mesh approximation of the Glen-Stokes problem \eqref{eq:glenstokesweak}, about which we will say more below.)  We suppose that the discrete SIGP is well-posed, subject to the caveats in the last section regarding overhangs at the margin.
+where $F^h(s^h)[r] = - \int_\Omega (\Phi^h(s^h) + a)\, r \,dx dy$; compare \eqref{eq:sigpfunctional}.  Here $\Phi^h$ is an FE approximation of the IDO $\Phi$; see below.  We suppose that \eqref{eq:fesigpweakform} is well-posed, but this is subject to the same caveats in the last section regarding identification of Sobolev spaces, along with the concern about overhangs at the margin.
 
-Let $p$ denote an arbitrary node of the mesh $\mathcal{T}$, $(x_p,y_p)$ the coordinates of that node, and $\psi_p \in \mathcal{V}^h$ the corresponding $P_1$ hat function such that $\psi_p(x_q,y_q)=\delta_{pq}$ \cite{Elmanetal2014}.  Note that, because $\psi_p \in \mathcal{D}_+^h$, if $r \in \mathcal{K}^h$ then $r + c \psi_p \in \mathcal{K}^h$ for all $c\ge b(x_p,y_p) - r(x_p,y_p)$.
+All FE computations in this paper use the Python library Firedrake \cite{Rathgeberetal2016}, which applies an embedded domain language \cite{Alnaesetal2014} to convert weak forms into discrete equations which are solved in parallel using the PETSc \cite{Balayetal2020} library.  For $s^h \in \mathcal{K}^h$ we will compute $\Phi^h(s^h)$, namely the numerical Glen-Stokes \eqref{eq:glenstokesweak} surface velocity associated to the surface elevation $s^h$, using a extruded-mesh approximation of $\Lambda_s^h \subset \RR^{d+1}$, the icy domain as defined by \eqref{eq:lambdas}.  Specifically, if $d=2$ and if $\mathcal{T}$ is a triangulation of $\Omega \subset \RR^d$, and given $s^h$ and $b^h$ from $\mathcal{V}^h$, we apply the Firedrake concept of an extruded mesh \cite{Gibsonetal2019,McRaeetal2016} to give a prism element decomposition of $\Lambda_s^h$.  If $d=1$ then the extruded mesh has quadrilateral elements; a sketch is shown in Figure \ref{fig:extruded}.
 
-FIXME use Firedrake \cite{Alnaesetal2014,Rathgeberetal2016} with extruded meshes \cite{Gibsonetal2019,McRaeetal2016} for computing $\Phi^h$
+\begin{figure}[t]
+\begin{center}
+FIXME %\includegraphics[width=\textwidth]{genfigs/extruded.pdf}
+\end{center}
+\caption{Given a triangulation ($d=2$) or interval decomposition ($d=1$ as shown) of $\Omega$, to compute $\Phi^h(s^h)$ for $s^h \in \mathcal{K}^h$ we use a Firedrake extruded mesh of prisms or quadrilateral, respectively, to discretize $\Lambda_s^h$.}
+\label{fig:extruded}
+\end{figure}
+
+FIXME computing $\Phi^h(s)$
 
 
 \section{Smoothers} \label{sec:smoothers}
 
-As a first step toward solving \eqref{eq:fesigpweakform} we now propose (slow) solvers which will become smoothers in our multilevel method (next section)  The smoothers are the projected nonlinear Gauss-Seidel and projected nonlinear Jacobi (PNJ) methods \cite{KinderlehrerStampacchia1980}.  Given a current surface elevation $s\in \mathcal{K}^h$, these methods sweep through the nodes in a fixed order, solving one-dimensional VI problems, as follows, and updating $s$.  For node $p$ let $\omega_p^s = b(x_p,y_p) - s(x_p,y_p)$.  The one-dimensional VI at $p$ implied by \eqref{eq:fesigpweakform} is to find $c \ge \omega_p^s$ such that
+As a first step toward solving \eqref{eq:fesigpweakform} we propose (slow) solvers which will be smoothers in our multilevel method (next section)  The smoothers are the projected nonlinear Gauss-Seidel and projected nonlinear Jacobi (PNJ) methods \cite{KinderlehrerStampacchia1980}.  In fact we will describe both smoothers but only implement PNJ.
+
+Given a current surface elevation $s\in \mathcal{K}^h$, a smoother will sweep through the nodes in a fixed order, solving one-dimensional VI problems, as follows, and updating $s$.   Note that, because $\psi_p \in \mathcal{D}_+^h$, if $r \in \mathcal{K}^h$ then $r + c \psi_p \in \mathcal{K}^h$ for all $c\ge b(x_p,y_p) - r(x_p,y_p)$.  Therefore let $\omega_p^s = b(x_p,y_p) - s(x_p,y_p)$.  The one-dimensional VI at $p$ implied by \eqref{eq:fesigpweakform} is to find $c \ge \omega_p^s$ such that
 \begin{equation}
 F^h(s+c\psi_p)[(s+\gamma \psi_p) - (s+c \psi_p)] \ge 0 \label{eq:fepointwiseviEARLY}
 \end{equation}
