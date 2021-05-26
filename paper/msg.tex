@@ -71,7 +71,7 @@ urlcolor=black    % ...
 
 \newcommand{\rhoi}{\rho_{\text{i}}}
 
-\newcommand{\ip}[2]{\left<#1,#2\right>}
+\newcommand{\ip}[2]{\left(#1,#2\right)}
 
 \newcommand{\mR}{R^{\bm{\oplus}}}
 \newcommand{\iR}{R^{\bullet}}
@@ -259,13 +259,13 @@ Here the statements hold on all of $\Omega$ and the data $a,b$ are clear.  The s
 
 For $s \in \mathcal{K}$ and $r \in W^{1,\qq}(\Omega)$ we next define a functional which is nonlinear in $s$:
 \begin{equation}
-F(s)[r] = - \int_\Omega (\Phi(s) + a)\, r \,dx dy. \label{eq:sigpfunctional}
+F(s)[r] = - \ip{\Phi(s)}{r} = - \int_\Omega \Phi(s)\, r \,dx dy. \label{eq:sigpfunctional}
 \end{equation}
-One computes $F(s)[r]$ by defining the icy domain $\Lambda_s$ \eqref{eq:lambdas}, then solving the (weak form) Glen-Stokes problem \eqref{eq:glenstokesweak}, then evaluating the normal component of the surface trace of the velocity \eqref{eq:ido} to compute the IDO $\Phi(s)$, and then integrating the SKE quantity $\Phi(s) + a$ against the test function $r$.  Implicit in \eqref{eq:sigpfunctional} is that $\Phi(s) + a$ has minimal regularity; it need only be in the dual space of $W^{1,\qq}(\Omega)$.
+One computes $F(s)[r]$ by defining the icy domain $\Lambda_s$ \eqref{eq:lambdas}, then solving the (weak form) Glen-Stokes problem \eqref{eq:glenstokesweak}, then evaluating the normal component of the surface trace of the velocity \eqref{eq:ido} to compute the IDO $\Phi(s)$, and then integrating the result against the test function $r$.  Implicit in \eqref{eq:sigpfunctional} is that $\Phi(s)$ has minimal regularity; it need only be in the dual space of $W^{1,\qq}(\Omega)$.
 
 Finally, the SIGP weak form is the following variational inequality (VI) \cite{KinderlehrerStampacchia1980} which should determine $s\in\mathcal{K}$:
 \begin{equation}
-F(s)[r - s] \ge 0 \quad \text{for all $r \in \mathcal{K}$.}  \label{eq:sigpweakform}
+F(s)[r - s] \ge \ip{a}{r-s} \quad \text{for all $r \in \mathcal{K}$.}  \label{eq:sigpweakform}
 \end{equation}
 This VI has a shallow (SIA) analog, for which existence has been proven \cite{JouvetBueler2012}, but in that case the functional is an integral of powers of the thickness $s-b$ and the surface slope $\grad s$, thus locally-computable.  Here, by contrast, the computation of \eqref{eq:sigpfunctional} is non-local and expensive: to evaluate $F(s)[r]$ one must solve Glen-Stokes problem \eqref{eq:glenstokesweak} on the given $z=s(x,y)$ geometry.
 
@@ -286,19 +286,28 @@ To numerically solve \eqref{eq:sigpweakform} we will need the (Gateaux) derivati
 \begin{equation}
 F'(s)[t,r] = \lim_{\eps\to 0^+} \frac{F(s+\eps t)[r] - F(s)[r]}{\eps} = - \int_\Omega \Phi'(s)[t]\, r \,dx dy \label{eq:sigpfunctionalderiv}
 \end{equation}
-where a product-rule computation on \eqref{eq:ido} gives
-\begin{align}
-\Phi'(s)[t] &= \lim_{\eps\to 0^+} \frac{\bu|_{s+\eps t} \cdot \bn_{s+\eps t} - \bus \cdot \bn_s}{\eps} \label{eq:idoderiv} \\
-    &= - \left(\lim_{\eps\to 0^+} \frac{\bu|_{s+\eps t} - \bus}{\eps}\right) \cdot \bn_s + \Phi(s) \cdot \left<t_x,t_y,0\right>. \notag
-\end{align}
+where by definition
+\begin{equation}
+\Phi'(s)[t] = \lim_{\eps\to 0^+} \frac{\bu|_{s+\eps t} \cdot \bn_{s+\eps t} - \bus \cdot \bn_s}{\eps}. \label{eq:idoderiv}
+\end{equation}
+In \eqref{eq:idoderiv} note that the normal vectors and surface velocities are extended to the whole of $\Omega$; see \eqref{eq:surfacevelocity}.  We will assume that $\Phi'(s)[t]$ is in the dual space of $W^{1,\qq}(\Omega)$ so that \eqref{eq:sigpfunctionalderiv} is finite.  Observe that $F'$ is straightforward to compute from $\Phi'$.
 
-Observe that $F'$ is straightforward to compute from $\Phi'$, and we will assume that $\Phi'(s)[t]$ is in the dual space of $W^{1,\qq}(\Omega)$ so that \eqref{eq:sigpfunctionalderiv} is finite.  In \eqref{eq:idoderiv} note that the normal vectors and surface velocities are extended to the whole of $\Omega$; see \eqref{eq:surfacevelocity}.
-
-The new functionals $F'(s)[t,r]$ and $\Phi'(s)[t]$ are one-sided directional derivatives in the sense that $s+\eps t$ must be admissible, i.e.~$s+\eps t\ge b$, for all sufficiently-small $\eps>0$, and this clearly requires $t\ge 0$ on the (active) set where $s=b$.  However, to simplify our considerations we define an $s$-independent set
+Note $F'(s)[t,r]$ and $\Phi'(s)[t]$ are one-sided directional derivatives in the sense that $s+\eps t$ must be admissible, i.e.~$s+\eps t\ge b$, for all sufficiently-small $\eps>0$, and this clearly requires $t\ge 0$ on the (active) set where $s=b$.  However, to simplify our considerations we define an $s$-independent set
 \begin{equation}
 \mathcal{D}_+ = \{t \in W^{1,\qq}(\Omega) \,:\, t(x,y) \ge 0\}, \label{eq:infdefectset}
 \end{equation}
-and $\Phi'(s)[t]$ is well-defined on inputs $(s,t) \in \mathcal{K} \times \mathcal{D}_+$.  Thus $F'(s)[t,r]$ is well-defined for $(s,t,r) \in \mathcal{K} \times \mathcal{D}_+ \times W^{1,\qq}(\Omega)$.
+so $\Phi'(s)[t]$ is well-defined on inputs $(s,t) \in \mathcal{K} \times \mathcal{D}_+$ and $F'(s)[t,r]$ is well-defined for $(s,t,r) \in \mathcal{K} \times \mathcal{D}_+ \times W^{1,\qq}(\Omega)$.
+
+We will approximate the true derivative $\Phi'(s)[t]$ by the difference quotient in \eqref{eq:idoderiv}, but only in the situation where $t \in \mathcal{D}_+$ has small support.  (It will be a finite element basis function; see the next section.)  For this it is relevant to say more about the difference, as it depends on whether one is in the support of $t$ or not:
+\begin{align*}
+\bu|_{s+\eps t} \cdot \bn_{s+\eps t} - \bus \cdot \bn_s &= \left(\bu|_{s+\eps t} \cdot \bn_{s+\eps t} - \bus \cdot \bn_{s+\eps t}\right) + \left(\bus \cdot \bn_{s+\eps t} - \bus \cdot \bn_s\right) \\
+    &= \begin{cases}
+           (\bu|_{s+\eps t} - \bus) \cdot \bn_{s+\eps t} + \eps\, \bus \cdot \left<t_x,t_y,0\right>, & s > b \\
+           \bu|_{s+\eps t} \cdot \bn_{s+\eps t}, & s=b \text{ and } t > 0 \\
+           0, & s=b \text{ and } t = 0
+                 \end{cases}
+\end{align*}
+Observe that $\bu|_{s+\eps t} \cdot \bn_{s+\eps t} = o(\eps)$ on the ice-free area $s=b$, i.e.~that the dynamical part of the SKE vanishes for small ice masses on bare ground, is a necessary condition for differentiability of $\Phi$.  It is reasonable to suppose this is so when there is no sliding.
 
 In the next three sections we will construct an iterative, multilevel finite element solver for SIGP weak form \eqref{eq:sigpweakform}.  When we approximate the true derivative $\Phi'(s)[t]$ by a difference quotient, a significant issue arises because two Glen-Stokes solutions over the ice domains $\Lambda_{s+\eps t}$ and $\Lambda_s$ are seemingly required.  While this would imply a very large numbers of expensive dynamical solves, in Section \ref{sec:smoothers} we propose a less-expensive approximation.
 
