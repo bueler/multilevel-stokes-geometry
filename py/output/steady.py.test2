@@ -1,0 +1,9 @@
+residual(): base mesh of 8 elements (intervals)
+            extruded mesh: 6 x 4 icy elements (2 ice-free base elements)
+            sizes: n_u = 242, n_p = 37
+0: 6.3623e+00
+    jacobislow negd = []
+1: 4.3448e+00
+    jacobislow negd = []
+2: 1.1124e+00
+smoother iteration CONVERGED by -irtol

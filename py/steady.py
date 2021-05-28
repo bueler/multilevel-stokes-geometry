@@ -2,9 +2,14 @@
 '''Solve steady-geometry Stokes obstacle problem by a multilevel constraint decomposition method.'''
 
 # TODO:
-#   1. implement Jacobi smoother by SLOW method, getting derivative of SKE
-#      w.r.t. a surface displacement by finite difference
+#   1. implement gsslow
 #   2. copy partI/mcdn.py and build it out
+
+# RUNS:
+#   1. actually converges
+#      ./steady.py -sweepsonly -J JJ -smoother jacobislow -Hmin HH
+#      with JJ=1,2,3,4 and HH=0,10,100;  HH=0 seems as good as any
+#      also trying on JJ=5,6 and HH=0
 
 import sys
 import argparse
@@ -67,7 +72,7 @@ adda('-o', metavar='FILEROOT', type=str, default='',
      help='save .pvd and final image in .png to FILEROOT.*')
 adda('-oimage', metavar='FILE', type=str, default='',
      help='save final image, e.g. .pdf or .png')
-adda('-omega', type=float, metavar='X', default=1000.0,  # FIXME sensitive
+adda('-omega', type=float, metavar='X', default=1.0,  # FIXME sensitive
     help='scale by this factor in smoother iteration (default=%(default)s)')
 adda('-padding', action='store_true', default=False,
      help='put Hmin thickness of ice in ice-free locations')
