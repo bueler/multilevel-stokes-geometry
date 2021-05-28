@@ -78,7 +78,7 @@ adda('-padding', action='store_true', default=False,
      help='put Hmin thickness of ice in ice-free locations')
 adda('-printwarnings', action='store_true', default=False,
      help='print pointwise feasibility warnings')
-adda('-smoother', choices=['richardson', 'jacobislow'],
+adda('-smoother', choices=['richardson', 'jacobislow', 'gsslow'],
      metavar='X', default='richardson',
      help='smoother (default=%(default)s)')
 adda('-steadyhelp', action='store_true', default=False,

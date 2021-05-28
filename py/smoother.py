@@ -241,6 +241,8 @@ class SmootherStokes(SmootherObstacleProblem):
             self.richardsonsweep(s, phi, currentr)
         elif self.args.smoother == 'jacobislow':
             self.jacobislowsweep(mesh1d, s, ella, phi, currentr)
+        elif self.args.smoother == 'gsslow':
+            self.gsslowsweep(mesh1d, s, ella, phi, currentr)
         mesh1d.WU += 1
         return self.residual(mesh1d, s, ella)
 
@@ -252,7 +254,7 @@ class SmootherStokes(SmootherObstacleProblem):
         np.maximum(s - self.args.omega * r, phi, s)
 
     def jacobislowsweep(self, mesh1d, s, ella, phi, r,
-                        eps=1.0, info=False, dump=False):
+                        eps=1.0, dump=False):
         '''Do in-place projected nonlinear Jacobi smoothing on s(x)
         where the diagonal entry d_i = F'(s)[psi_i,psi_i] is computed
         by VERY SLOW finite differencing of expensive residual calculations.
@@ -264,8 +266,6 @@ class SmootherStokes(SmootherObstacleProblem):
         snew = s.copy()
         negd = []
         for j in range(1, len(s)-1): # loop over interior points
-            if info:
-                print('    perturb at j=%d ... ' % j, end='')
             sperturb = s.copy()
             sperturb[j] += eps
             if dump:
@@ -274,17 +274,39 @@ class SmootherStokes(SmootherObstacleProblem):
             d = (rperturb[j] - r[j]) / eps
             if d > 0.0:
                 snew[j] = max(s[j] - self.args.omega * r[j] / d, phi[j])
-                if info:
-                    print('d[%d] = %.4e > 0.0' % (j,d))
             else:
                 snew[j] = phi[j]
                 negd.append(j)
-                if info:
-                    print('d[%d] = %.4e <= 0.0 ... setting s[j] = phi[j]' \
-                          % (j,d))
         print('    jacobislow negd = ', end='')
         print(negd)
         s[:] = snew[:] # in-place copy
+
+    def gsslowsweep(self, mesh1d, s, ella, phi, r,
+                    eps=1.0, dump=False):
+        '''Do in-place projected nonlinear Gauss-Seidel smoothing on s(x)
+        where the diagonal entry d_i = F'(s)[psi_i,psi_i] is computed
+        by VERY SLOW finite differencing of expensive residual calculations.
+        If d_i > 0 then
+            s_i <- max(s_i - omega * r_i / d_i, phi_i)
+        but otherwise
+            s_i <- phi_i.'''
+        negd = []
+        for j in range(1, len(s)-1): # loop over interior points
+            sperturb = s.copy()
+            sperturb[j] += eps
+            if dump:
+                self.savestatenextresidual(self.args.o + '_gs_%d.pvd' % j)
+            rperturb = self.residual(mesh1d, sperturb, ella)
+            d = (rperturb[j] - r[j]) / eps
+            if d > 0.0:
+                s[j] = max(s[j] - self.args.omega * r[j] / d, phi[j])
+            else:
+                s[j] = phi[j]
+                negd.append(j)
+            # must recompute residual for s (nonlocal!)
+            r = self.residual(mesh1d, s, ella)
+        print('    gsslow negd = ', end='')
+        print(negd)
 
     def phi(self, x):
         '''For now we have a flat bed.'''
