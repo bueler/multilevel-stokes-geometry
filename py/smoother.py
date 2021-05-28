@@ -18,8 +18,9 @@ def D(w):
     return 0.5 * (fd.grad(w) + fd.grad(w).T)
 
 class SmootherStokes(SmootherObstacleProblem):
-    '''To evaluate the residual this Jacobi smoother solves the Stokes problem
-    for the given geometry by creating an extruded mesh.'''
+    '''Smoother for solving the steady-geometry Stokes problem.  Generates an
+    extruded mesh for each residual evaluation.  Implements projected
+    nonlinear versions of the Richardson and Jacobi smoothers.'''
 
     def __init__(self, args, admissibleeps=1.0e-10):
         super().__init__(args, admissibleeps=admissibleeps)
@@ -237,23 +238,53 @@ class SmootherStokes(SmootherObstacleProblem):
         if currentr is None:
             currentr = self.residual(mesh1d, s, ella)
         if self.args.smoother == 'richardson':
-            self.richardsonsweep(s, currentr, phi)
+            self.richardsonsweep(s, phi, currentr)
         elif self.args.smoother == 'jacobislow':
-            raise NotImplementedError('-smoother jacobislow not implemented')
+            self.jacobislowsweep(mesh1d, s, ella, phi, currentr)
         mesh1d.WU += 1
         return self.residual(mesh1d, s, ella)
 
-    def richardsonsweep(self, s, r, phi):
+    def richardsonsweep(self, s, phi, r):
         '''Do in-place projected nonlinear Richardson smoothing on s(x):
-            s <- max(s - omega * r, phi)'''
+            s <- max(s - omega * r, phi)
+        User must adjust omega to reasonable level.  (Do this with SIA-type
+        stability criterion argument.)'''
         np.maximum(s - self.args.omega * r, phi, s)
 
-    def jacobislowsweep(self, s, r, phi):
-        '''Do in-place projected nonlinear Jacobi smoothing on s(x):
-            s_i <- max(s_i - omega * r_i / d_i, phi_i)
+    def jacobislowsweep(self, mesh1d, s, ella, phi, r,
+                        eps=1.0, info=False, dump=False):
+        '''Do in-place projected nonlinear Jacobi smoothing on s(x)
         where the diagonal entry d_i = F'(s)[psi_i,psi_i] is computed
-        by VERY SLOW finite differencing of residual calculations.'''
-        raise NotImplementedError('-smoother jacobislow not implemented')
+        by VERY SLOW finite differencing of expensive residual calculations.
+        If d_i > 0 then
+            snew_i <- max(s_i - omega * r_i / d_i, phi_i)
+        but otherwise
+            snew_i <- phi_i.
+        After snew is completed we do s <- snew.'''
+        snew = s.copy()
+        negd = []
+        for j in range(1, len(s)-1): # loop over interior points
+            if info:
+                print('    perturb at j=%d ... ' % j, end='')
+            sperturb = s.copy()
+            sperturb[j] += eps
+            if dump:
+                self.savestatenextresidual(self.args.o + '_jacobi_%d.pvd' % j)
+            rperturb = self.residual(mesh1d, sperturb, ella)
+            d = (rperturb[j] - r[j]) / eps
+            if d > 0.0:
+                snew[j] = max(s[j] - self.args.omega * r[j] / d, phi[j])
+                if info:
+                    print('d[%d] = %.4e > 0.0' % (j,d))
+            else:
+                snew[j] = phi[j]
+                negd.append(j)
+                if info:
+                    print('d[%d] = %.4e <= 0.0 ... setting s[j] = phi[j]' \
+                          % (j,d))
+        print('    jacobislow negd = ', end='')
+        print(negd)
+        s[:] = snew[:] # in-place copy
 
     def phi(self, x):
         '''For now we have a flat bed.'''
