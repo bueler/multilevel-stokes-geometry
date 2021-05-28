@@ -1,0 +1,8 @@
+residual(): base mesh of 16 elements (intervals)
+            extruded mesh: 12 x 2 icy elements (4 ice-free base elements)
+            sizes: n_u = 266, n_p = 43
+0: 3.1990e+00
+    gsslow negd = [1]
+1: 2.4745e+00
+    gsslow negd = [1, 3, 13]
+2: 1.6263e+00

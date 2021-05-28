@@ -2,14 +2,14 @@
 '''Solve steady-geometry Stokes obstacle problem by a multilevel constraint decomposition method.'''
 
 # TODO:
-#   1. implement gsslow
-#   2. copy partI/mcdn.py and build it out
+#   1. copy partI/mcdn.py and build it out
 
 # RUNS:
 #   1. actually converges
 #      ./steady.py -sweepsonly -J JJ -smoother jacobislow -Hmin HH
 #      with JJ=1,2,3,4 and HH=0,10,100;  HH=0 seems as good as any
-#      also trying on JJ=5,6 and HH=0
+#      also JJ=5
+#      also works with -smoother gsslow
 
 import sys
 import argparse
