@@ -86,12 +86,6 @@ args, unknown = parser.parse_known_args()
 if args.steadyhelp:
     parser.print_help()
     sys.exit(0)
-# allow -help for PETSc help, but otherwise fail on unknown options
-if unknown:
-    if len(unknown) > 1 or unknown[0] != '-help':
-        print('ERROR: unknown option')
-        parser.print_help()
-        sys.exit(0)
 
 if args.padding:
     assert args.Hmin > 0.0, 'padding requires minimum positive thickness'
