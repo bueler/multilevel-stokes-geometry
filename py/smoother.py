@@ -73,6 +73,9 @@ class SmootherStokes(SmootherObstacleProblem):
 
     def savestate(self, mesh, u, p, kres):
         ''' Save state and diagnostics into .pvd file.'''
+        assert self.saveflag == True
+        assert self.savename is not None
+        assert len(self.savename) > 0
         nu, tau = self.stresses(mesh, u)
         u *= secpera
         u.rename('velocity (m a-1)')
@@ -126,10 +129,12 @@ class SmootherStokes(SmootherObstacleProblem):
 
     def residual(self, mesh1d, s, ella):
         '''Compute the residual functional, namely the surface kinematical
-        residual for the entire domain, for a given iterate s.  Note mesh1D is
+        residual for the entire domain, for a given iterate s.  In symbols
+        matching the paper, returns  r = F(s)[.] - ella(.)  where . ranges over
+        hat functions on mesh1d.  Note mesh1D is
         a MeshLevel1D instance and ella(.) = <a(x),.> is a source term in V^j'.
-        This residual evaluation requires setting up an (x,z) Firedrake mesh,
-        starting from a (stored) base mesh and then using extrusion.  The icy
+        This residual evaluation requires setting up an (x,z) Firedrake mesh
+        by extrusion of a (stored) base mesh.  The icy
         columns get their height from s, with minimum height args.Hmin.  By
         default the extruded mesh has empty (0-element) columns if ice-free
         according to s.  If args.padding==True then the whole extruded mesh has
@@ -150,7 +155,8 @@ class SmootherStokes(SmootherObstacleProblem):
         # extrude the mesh, to temporary total height 1.0
         mz = self.args.mz
         if self.args.padding:
-            assert self.args.Hmin > 0.0, 'padding requires positive thickness'
+            assert self.args.Hmin > 0.0, \
+                'padding requires minimum positive thickness'
             mesh = fd.ExtrudedMesh(self.basemesh, mz, layer_height=1.0 / mz)
             if firstcall:
                 print('            extruded mesh: padded, %d x %d elements' \
@@ -166,7 +172,7 @@ class SmootherStokes(SmootherObstacleProblem):
                                    layer_height=1.0 / mz)
             if firstcall:
                 icycount = sum(icyelement)
-                print('            extruded mesh: %d x %d icy and %d ice-free elements' \
+                print('            extruded mesh: %d x %d icy elements (%d ice-free base elements)' \
                       % (icycount, mz, self.mx - icycount))
 
         # generate extruded mesh of height s(x)
@@ -218,19 +224,36 @@ class SmootherStokes(SmootherObstacleProblem):
                 topcellnodes = cnm[cell, ...] + coff * ncell - 1
                 kr = kres.dat.data_ro[topcellnodes] # at ALL nodes in top cell
                 r[bmcnm[cell,...]] = kr[topind]
+            # finally include the climatic mass balance
             return mesh1d.ellf(r) - ella
 
     def smoothersweep(self, mesh1d, s, ella, phi, currentr=None):
-        '''Do in-place projected nonlinear Richardson smoothing on s(x).
-        Returns the residual after the sweep.'''
+        '''Do in-place smoothing on s(x).  On input, set currentr to a vector
+        to avoid re-computing the residual.  Computes and returns the residual
+        after the sweep.'''
         mesh1d.checklen(s)
         mesh1d.checklen(ella)
         mesh1d.checklen(phi)
         if currentr is None:
             currentr = self.residual(mesh1d, s, ella)
-        np.maximum(s - self.args.alpha * currentr, phi, s)  # s <- max(...,phi)
+        if self.args.smoother == 'richardson':
+            self.richardsonsweep(s, currentr, phi)
+        elif self.args.smoother == 'jacobislow':
+            raise NotImplementedError('-smoother jacobislow not implemented')
         mesh1d.WU += 1
         return self.residual(mesh1d, s, ella)
+
+    def richardsonsweep(self, s, r, phi):
+        '''Do in-place projected nonlinear Richardson smoothing on s(x):
+            s <- max(s - omega * r, phi)'''
+        np.maximum(s - self.args.omega * r, phi, s)
+
+    def jacobislowsweep(self, s, r, phi):
+        '''Do in-place projected nonlinear Jacobi smoothing on s(x):
+            s_i <- max(s_i - omega * r_i / d_i, phi_i)
+        where the diagonal entry d_i = F'(s)[psi_i,psi_i] is computed
+        by VERY SLOW finite differencing of residual calculations.'''
+        raise NotImplementedError('-smoother jacobislow not implemented')
 
     def phi(self, x):
         '''For now we have a flat bed.'''

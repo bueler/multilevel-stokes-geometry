@@ -27,15 +27,14 @@ Note s solves the surface kinematical equation, as an interior PDE, in the
 inactive set {x | s(x) > b(x)}.
 
 Solution is by the nonlinear (FAS) extension of the multilevel constraint
-decomposition (MCD) method of Tai (2003).  See the simpler cases, including
-the SIA, in part I (Bueler, 2022).
+decomposition (MCD) method of Tai (2003), or by sweeps of the smoother.
 
 Initial implementation generates Bueler profile geometry as initial state
 and then tries to converge from there.
 
 References:
-  * Bueler, E. (2022). Geometric multigrid for glacier modeling I:
-    New concepts and algorithms.  In preparation.
+  * Bueler, E. and Mitchell, L. (2022). Multilevel computation of glacier
+    geometry from Stokes dynamics.  In preparation.
   * Tai, X.-C. (2003). Rate of convergence for some constraint
     decomposition methods for nonlinear variational inequalities.
     Numer. Math. 93 (4), 755--786.
@@ -44,46 +43,58 @@ References:
     allow_abbrev=False,  # bug in python 3.8 causes this to be ignored
     add_help=False)
 adda = parser.add_argument
-adda('-alpha', type=float, metavar='X', default=1000.0,  # FIXME sensitive
-    help='Richardson iteration parameter (default=1000.0)')
 adda('-coarse', type=int, default=1, metavar='N',
-     help='smoother sweeps on coarsest grid (default=1)')
+     help='smoother sweeps on coarsest grid (default=%(default)s)')
 adda('-cyclemax', type=int, default=100, metavar='N',
-     help='maximum number of (multilevel) cycles (default=100)')
+     help='maximum number of (multilevel) cycles (default=%(default)s)')
 adda('-domainlength', type=float, default=30.0e3, metavar='L',
-     help='solve on [0,L] (default L=30 km)')
+     help='solve on [0,L] (default=%(default)s m)')
 adda('-down', type=int, default=0, metavar='N',
-     help='smoother sweeps before coarse-mesh correction (default=0)')
+     help='smoother sweeps before coarse-mesh correction (default=%(default)s)')
 adda('-eps', type=float, metavar='X', default=1.0e-2,  # FIXME sensitive
-    help='regularization used in viscosity (default=10^{-2})')
+    help='regularization used in viscosity (default=%(default)s)')
 adda('-Hmin', type=float, metavar='X', default=0.0,
-    help='minimum ice thickness; Hmin>0 for cliffs or padding (default=0.0)')
+    help='minimum ice thickness (default=%(default)s)')
 adda('-irtol', type=float, default=1.0e-3, metavar='X',
-     help='reduce norm of inactive residual (default X=1.0e-3)')
+     help='reduce norm of inactive residual (default=%(default)s)')
 adda('-jcoarse', type=int, default=0, metavar='J',
      help='coarse mesh is jth level (default jcoarse=0 gives 1 node)')
 adda('-J', type=int, default=3, metavar='J',
-     help='fine mesh is Jth level (default J=3)')
+     help='fine mesh is Jth level (default J=%(default)s)')
 adda('-mz', type=int, default=4, metavar='MZ',
-     help='number of (x,z) extruded mesh levels (default MZ=4)')
+     help='number of (x,z) extruded mesh levels (default=%(default)s)')
 adda('-o', metavar='FILEROOT', type=str, default='',
      help='save .pvd and final image in .png to FILEROOT.*')
 adda('-oimage', metavar='FILE', type=str, default='',
      help='save final image, e.g. .pdf or .png')
+adda('-omega', type=float, metavar='X', default=1000.0,  # FIXME sensitive
+    help='scale by this factor in smoother iteration (default=%(default)s)')
 adda('-padding', action='store_true', default=False,
      help='put Hmin thickness of ice in ice-free locations')
 adda('-printwarnings', action='store_true', default=False,
      help='print pointwise feasibility warnings')
+adda('-smoother', choices=['richardson', 'jacobislow'],
+     metavar='X', default='richardson',
+     help='smoother (default=%(default)s)')
 adda('-steadyhelp', action='store_true', default=False,
      help='print help for steady.py and end (vs -help for PETSc options)')
 adda('-sweepsonly', action='store_true', default=False,
      help='do smoother sweeps as cycles, instead of multilevel')
 adda('-up', type=int, default=2, metavar='N',
-     help='smoother sweeps after coarse-mesh correction (default=2)')
+     help='smoother sweeps after coarse-mesh correction (default=%(default)s)')
 args, unknown = parser.parse_known_args()
 if args.steadyhelp:
     parser.print_help()
     sys.exit(0)
+# allow -help for PETSc help, but otherwise fail on unknown options
+if unknown:
+    if len(unknown) > 1 or unknown[0] != '-help':
+        print('ERROR: unknown option')
+        parser.print_help()
+        sys.exit(0)
+
+if args.padding:
+    assert args.Hmin > 0.0, 'padding requires minimum positive thickness'
 
 # mesh hierarchy: a list of MeshLevel1D with indices [0,..,levels-1]
 assert args.J >= args.jcoarse >= 0
@@ -130,11 +141,7 @@ def final(mesh, s, cmb, filename=''):
     plt.xlabel('x (km)')
     output(filename, 'image of final iterate')
 
-# FIXME be more sophisticated ... but the following sort of works
-
 if args.sweepsonly:
-    # simple loop to do projected nonlinear Richardson, = explicit
-    #   time-stepping, as a candidate smoother
     if args.o:
         obsprob.savestatenextresidual(args.o + '_0.pvd')
     r = obsprob.residual(mesh, s, ellf)
@@ -145,10 +152,10 @@ if args.sweepsonly:
         normF = obsprob.inactiveresidualnorm(mesh, s, r, b)
         print('%d: %.4e' % (j+1, normF))
         if normF < args.irtol * normF0:
-            print('NRichardson iteration CONVERGED by -irtol')
+            print('smoother iteration CONVERGED by -irtol')
             break
         elif normF > 100.0 * normF0:
-            print('NRichardson iteration DIVERGED detected')
+            print('smoother iteration DIVERGED detected')
             break
     if args.o:
         obsprob.savestatenextresidual(args.o + '_%d.pvd' % (j+1))
