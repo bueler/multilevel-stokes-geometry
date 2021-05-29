@@ -245,7 +245,7 @@ where $\bu|_{\overline{\partial} \Lambda_s}$ denotes a trace operator on $W^{1,\
 \begin{center}
 \includegraphics[width=\textwidth]{genfigs/idoaction.pdf}
 \end{center}
-\caption{The ice dynamics operator $\Phi$ maps the surface elevation $s$ (dashed) to the normal ice surface motion $\Phi(s)=\bu|_s \cdot \bn_s$; the thin line is $s+\Phi(s)$.  Both input and output are defined on all of $\Omega$.}
+\caption{The ice dynamics operator $\Phi$ maps the surface elevation $s$ (dashed) to the normal ice surface motion $\Phi(s)=\bu|_s \cdot \bn_s$; the thin line is $s+\Phi(s)$.  Both the input and output of $\Phi$ are defined on all of $\Omega$.}
 \label{fig:idoaction}
 \end{figure}
 
@@ -355,59 +355,72 @@ where $F^h(s)[r] = - \ip{\Phi^h(s)}{r}$; compare \eqref{eq:sigpfunctional}.  We 
 
 \section{Smoothers} \label{sec:smoothers}
 
-In this section we propose solvers for \eqref{eq:fesigpweakform}.  We describe certain projected and nonlinear iterations, variants of the Gauss-Seidel and Jacobi methods, which are suitable for VIs \cite{KinderlehrerStampacchia1980}.  While these iterations are adequate smoothers in a multilevel method (next section), they converge slowly if used as single-level methods.
+In this section we propose solvers for \eqref{eq:fesigpweakform}, namely certain projected and nonlinear iterations, variants of the Gauss-Seidel and Jacobi methods, which are suitable for VIs \cite{KinderlehrerStampacchia1980}.  While these iterations are adequate smoothers in a multilevel method (next section), they converge slowly if used as single-level methods.  However, because of the non-locality of the SIGP functional $F^h$, we must make careful approximations in order to retain adequate per-iteration performance.
 
-Given a current surface elevation $s^h\in \mathcal{K}^h$, these smoothers sweep through the vertices ($P_1$ nodes) in $\mathcal{T}$, in a fixed order, solving one-dimensional VI problems and then updating $s^h$.   Denote an arbitrary vertex of $\mathcal{T}$ by $(x_i,y_i)$ and let $\psi_i \in \mathcal{V}^h$ be the corresponding hat function, with $\psi_i(x_j,y_j)=\delta_{ij}$ \cite{Elmanetal2014}.  Also let $\mathcal{D}_+^h = \{t^h \in \mathcal{V}^h \,:\, t^h \ge 0\}$.  Note that, because $\psi_i \in \mathcal{D}_+^h$, $s^h + c \psi_i \in \mathcal{K}^h$ if and only if $c\ge \omega_i^{s^h} = b^h(x_i,y_i) - s^h(x_i,y_i)$.
+Given a current surface elevation $s^h\in \mathcal{K}^h$, our smoothers will sweep through the $m$ vertices ($P_1$ nodes) of $\mathcal{T}$ in a fixed order, solving one-dimensional VI problems and then updating $s^h$.   Denote an arbitrary vertex of $\mathcal{T}$ by $(x_i,y_i)$ and let $\psi_i \in \mathcal{V}^h$ be the corresponding hat function, with $\psi_i(x_j,y_j)=\delta_{ij}$ \cite{Elmanetal2014}.  Also let $\mathcal{D}_+^h = \{t^h \in \mathcal{V}^h \,:\, t^h \ge 0\}$.  Note that $\psi_i \in \mathcal{D}_+^h$ and that $s^h + c \psi_i \in \mathcal{K}^h$ if and only if $c\ge \beta_i^{s^h} = b^h(x_i,y_i) - s^h(x_i,y_i)$.
 
-The one-dimensional VI at node $i$ is derived from \eqref{eq:fesigpweakform}.  It finds $c \ge \omega_i^{s^h}$ such that
+The one-dimensional VI at node $i$ is derived from \eqref{eq:fesigpweakform} using $r = s^h+\gamma \psi_i$ and $s = s^h+c \psi_i$ for scalars $\gamma,c$.  Specifically, we seek $c \ge \beta_i^{s^h}$ such that
 \begin{equation}
-F^h(s_c)[r_\gamma - s_c] \ge \ip{a}{r_\gamma - s_c} \label{eq:fepointwiseviEARLY}
+F^h(s_c)[(s^h+\gamma \psi_i) - (s^h+c \psi_i)] \ge \ip{a}{(s^h+\gamma \psi_i) - (s^h+c \psi_i)} \label{eq:fepointwiseviEARLY}
 \end{equation}
-for all $\gamma \ge \omega_i^{s^h}$, with $r_\gamma = s^h+\gamma \psi_i$ and $s_c = s^h+c \psi_i$.  Note \eqref{eq:fepointwiseviEARLY} simplifies substantially.  Let
+for all $\gamma \ge \beta_i^{s^h}$.  Let
 \begin{equation}
 \rho_i(s^h; c) = F^h(s^h+c\psi_i)[\psi_i] - \ip{a}{\psi_i} \label{eq:ferhoi}
 \end{equation}
-be the point-wise residual function.  Then \eqref{eq:fepointwiseviEARLY} is equivalent
+be the point-wise residual function and note \eqref{eq:fepointwiseviEARLY} simplifies into
 \begin{equation}
 (\gamma - c) \,\rho_i(s^h; c) \ge 0. \label{eq:fepointwisevi}
 \end{equation}
-Supposing \eqref{eq:fepointwisevi} is well-posed, after solving it for $c$ the surface elevation $s^h$ is then updated $s^h \gets s^h + c \psi_i$ by the smoother.  Observe that admissibility is preserved because the updated surface elevation is also in $\mathcal{K}^h$.
+After solving \eqref{eq:fepointwisevi} for $c$ the surface elevation $s^h$ is then updated $s^h \gets s^h + c \psi_i$ by the smoother.  Observe that admissibility is preserved because the updated surface elevation is also in $\mathcal{K}^h$.
 
-If each pointwise update is done immediately then the smoother is of Gauss-Seidel (GS) type, sometimes called a serial or multiplicative iteration. By contrast, the (parallel, additive) Jacobi smoother computes solutions at all nodes $i$ before doing all the updates.  In linear problems it is known that Gauss-Seidel generally converges in about half as many iterations \cite{Greenbaum1997}, but here there is a more glaring difference between the two iterations.  The GS iteration would be extraordinarily expensive because a new Glen-Stokes solution would be required at every node of $\mathcal{T}$, so we will only implement the Jacobi version.
-
-If $\rho_i(s^h; c)$ were linear and increasing in $c$ then the solution to \eqref{eq:fepointwisevi} would be given by a simple formula \cite{GraeserKornhuber2009}, namely $c = \max\left\{-\beta/\alpha, \omega_i^{s^h}\right\}$ if $\rho_i(s^h; c) = \alpha c + \beta$ with $\alpha > 0$.  In fact $\rho_i(s^h; c)$ is nonlinear, but the simplest approximation scheme is to linearize $\rho_i(s^h; c)$, that is, to do one projected Newton step for the one-dimensional VI problem \eqref{eq:fepointwisevi} at each node.
-
-To implement this strategy we approximate
+If $\rho_i(s^h; c)$ were linear and increasing in $c$ then the solution to \eqref{eq:fepointwisevi} would be given by a simple and well-known formula \cite[formula (4.4), for example]{GraeserKornhuber2009}, namely $c = \max\left\{-\rho_i(s^h; 0)/\alpha, \beta_i^{s^h}\right\}$ where $\rho_i(s^h; c) = \rho_i(s^h; 0) + \alpha c$ with $\alpha > 0$.  In fact $\rho_i(s^h; c)$ is nonlinear, but we adopt a simple approximation scheme for a smoother.  That is, we linearize
 \begin{equation}
-\rho_i(s^h; c) \approx \rho_i(s^h; 0) + c\, (F^h)'(s^h)[\psi_i,\psi_i]. \label{eq:rhoapprox}
+\rho_i(s^h; c) \approx \rho_i(s^h; 0) + c\, \rho_i'(s^h; 0) \label{eq:rhoapprox}
 \end{equation}
-If we partition the support of $\psi_i$ into where there is ice and not,
+and do one projected Newton step for problem \eqref{eq:fepointwisevi} at each node where $\rho_i'(s^h; 0) > 0$.  Because the interior PDE in the shallow, flat-bed model is elliptic, one can prove that the Jacobian diagonal entry in that case is positive on the icy part of $\Omega$ \cite{JouvetBueler2012}, but the full Glen-Stokes model here allows no such guarantee to our knowledge.  As the simplest-possible rule, if $\rho_i'(s^h; 0) \le 0$, so we know that the model has degenerated at the point in the sense that the linearized operator is not acting elliptically with respect to a perturbation, we set $c = \beta_i^{s^h}$ to remove the ice at that location.  % FIXME THIS MUST BE TOO AGGRESSIVE?
+
+Note that the derivative, which is also a Jacobian diagonal entry, can be approximated by a finite difference,
 \begin{equation}
-\theta_i = \{\psi_i > 0\} \cap \{s^h > b^h\}, \qquad {\hat\theta}_i = \{\psi_i > 0\} \setminus \theta_i,  \label{eq:thetasupport}
+\rho_i'(s^h; 0) = (F^h)'(s^h)[\psi_i,\psi_i] \approx \frac{\rho_i(s^h; \eps) - \rho_i(s^h; 0)}{\eps}.  \label{eq:rhofd}
 \end{equation}
-then by \eqref{eq:sigpfunctionalderiv}, \eqref{eq:idoderiv}, \eqref{eq:differencecases}, and \eqref{eq:ferhoi} we may compute with local integrals
+Use of \eqref{eq:rhofd} is very expensive because each value $\rho_i(s^h; \eps)$ requires a separate Glen-Stokes computation for the residual.
+
+If each pointwise update $s^h \gets s^h + c \psi_i$ is done immediately then the smoother is of Gauss-Seidel (GS) type, also called serial or multiplicative.  By contrast, a (parallel, additive) Jacobi smoother would compute and store solutions $c$ at each node $i$ before doing any updates.  In linear problems GS generally converges in about half as many iterations \cite{Greenbaum1997}, but here a more glaring difference dominates, namely the expense of yet more residual evaluations.  Nonetheless, the GS iteration using a single Newton step and approximation \eqref{eq:rhofd} is a well-defined smoother, so we state it in Pseudocode \ref{pc:pngsslow}, in a form which also allows over-relaxation ($\id{omega} > 1$) or under-relaxation ($\id{omega} < 1$) if desired.
+
+\begin{pcode}[ht]
+\begin{pseudo*}
+\pr{pngs\_slow}(s^h,b^h,a,\id{eps}=1.0\,m,\id{omega}=1)\text{:} \\+
+    \ct{check admissibility: $s^h \ge b^h$} \\
+    function $\rho_i(s^h; c) = F^h(s^h+c\psi_i)[\psi_i] - \ip{a}{\psi_i}$ \\
+    for $i = 0,\dots,m-1$ \\+
+        $\alpha_i = (\rho_i(s^h; \eps) - \rho_i(s^h; 0))/\eps$  \qquad\qquad \ct{FD for Jacobian diagonal entry} \\
+        $\beta_i = b^h(x_i,y_i) - s^h(x_i,y_i)$ \qquad\qquad \ct{pointwise defect obstacle} \\
+        if $J_{ii} > 0$ \\+
+            $(s^h)_i \gets \max\{(s^h)_i - \id{omega}\,\rho_i(s^h; 0) / \alpha_i, \beta_i\}$ \\-
+        else \\+
+            $(s^h)_i \gets \beta_i$ \qquad\qquad \ct{non-elliptic case}
+\end{pseudo*}
+\caption{Projected nonlinear GS iteration, an expensive in-place solver (smoother) using a finite-difference derivative.  Note that $2m$ solutions of Glen-Stokes problem \eqref{eq:glenstokesweak} are required per application.}
+\label{pc:pngsslow}
+\end{pcode}
+
+To build a better smoother we return to the computation of the Jacobian diagonal entry $\rho_i'(s^h; 0)$.  Suppose we partition the support of $\psi_i$ into where there is ice and not,
 \begin{equation}
-\rho_i(s^h; 0) = F^h(s^h)[\psi_i] - \ip{a}{\psi_i} = - \int_{\theta_i} \bu|_{s^h} \cdot \bn_{s^h}\, \psi_i\,dx\,dy - \ip{a}{\psi_i}  \label{eq:rhozero}
+\theta_i = \{\psi_i > 0\} \cap \{s^h > b^h\}, \qquad {\hat\theta}_i = \{\psi_i > 0\} \setminus \theta_i.  \label{eq:thetasupport}
+\end{equation}
+Suppose, for the next two formulas, that $\bu|_{z}$ denotes the surface velocity of the solution to the Glen-Stokes problem \eqref{eq:glenstokesweak} on the domain $\Lambda_{z}$, using an extruded mesh (Section \ref{sec:fe}).  Then by \eqref{eq:sigpfunctionalderiv}, \eqref{eq:idoderiv}, \eqref{eq:differencecases}, and \eqref{eq:ferhoi} we may compute with local integrals
+\begin{equation}
+\rho_i(s^h; 0) = F^h(s^h)[\psi_i] - \ip{a}{\psi_i} = - \int_{\theta_i} (\bu|_{s^h} \cdot \bn_{s^h}- a)\, \psi_i  \label{eq:rhozero}
 \end{equation}
 and
 \begin{align}
-(F^h)'(s^h)[\psi_i,\psi_i] &= - \int_{\theta_i} \lim_{\eps\to 0^+} \frac{(\bu|_{s^h+\eps\psi_i} - \bu|_{s^h}) \cdot \bn_{s^h+\eps\psi_i}}{\eps} \psi_i\,dx\,dy \label{eq:rholocalderiv} \\
-  &\qquad - \int_{{\hat\theta}_i} \lim_{\eps\to 0^+} \frac{\bu|_{s^h+\eps\psi_i} \cdot \bn_{s^h+\eps\psi_i}}{\eps} \psi_i\,dx\,dy.  \notag
+\rho_i'(s^h; 0) &= (F^h)'(s^h)[\psi_i,\psi_i]  \label{eq:rholocalderiv} \\
+  &= - \int_{\theta_i} \lim_{\eps\to 0^+} \frac{(\bu|_{s^h+\eps\psi_i} - \bu|_{s^h}) \cdot \bn_{s^h+\eps\psi_i}}{\eps} \psi_i - \int_{{\hat\theta}_i} \lim_{\eps\to 0^+} \frac{\bu|_{s^h+\eps\psi_i} \cdot \bn_{s^h+\eps\psi_i}}{\eps} \psi_i.  \notag
 \end{align}
 
-If $\alpha=(F^h)'(s^h)[\psi_i,\psi_i]$ is positive then the solution of \eqref{eq:fepointwisevi} is
-\begin{equation}
-  c = \max\left\{-\frac{\rho_i(s^h; 0)}{\alpha}, \omega_i^{s^h}\right\}, \label{eq:fepointwisevisolution}
-\end{equation}
-which generalizes a well-known formula for the classical obstacle problem \cite[formula (4.4), for example]{GraeserKornhuber2009}.  However, if $\alpha\le 0$ then the model has degenerated in the sense that the linearized operator is not acting elliptically with respect to that perturbation.   In that case we make no change to $s^h$; we set $c=0$.  Because the interior PDE in the shallow, flat-bed model is elliptic, one can prove that the analogous $\alpha$ is positive on the icy part of $\Omega$ \cite{JouvetBueler2012}, but the full Glen-Stokes model here allows no such guarantee to our knowledge.
+Clearly, any smoother application, which is a sweep over all nodes in $\mathcal{T}$, will require at least one solution of the Glen-Stokes problem \eqref{eq:glenstokesweak}, namely solving with the geometry determined by the current surface elevation $s^h$.  However, formulas \eqref{eq:rhozero} and \eqref{eq:rholocalderiv} as stated are prohibitively expensive because a Stokes solve is required  for each mesh node.  Thus we seek a less expensive way to estimate the surface velocity for a perturbed surface elevation with a small ``bump'' $\eps\psi_i$.  The change to the nonlinearities in this Glen-Stokes problem should be small, and it would seem that the most important change to the velocity and pressure fields from a small bump perturbation is through the perturbed gravitational load applied to the linearized problem around the state $s^h$.  That is, we suppose other effect such as a perturbed normal direction on the surface are significantly smaller.
 
-We will approximate the limits in \eqref{eq:rhozero} and \eqref{eq:rholocalderiv} by using the obvious difference quotients, i.e.~by removing ``$\lim_{\eps\to 0^+}$'' and choosing $\eps$ to be small, and we set $\eps$ to one meter in computations.  However, we need to make further approximations to the computation of the divisor $\alpha$, i.e.~in \eqref{eq:rholocalderiv}, if we want a practical solver.
-
-Note that $\bu|_{z}$ denotes the surface velocity of the solution to the Glen-Stokes problem \eqref{eq:glenstokesweak} on the domain $\Lambda_{z}$, using an extruded mesh (Section \ref{sec:fe}).  Thus $\bu|_{s^h}$ and $\bu|_{s^h+\eps\psi_i}$ are the results of separate Glen-Stokes solves, over $\Lambda_{s^h}$ and $\Lambda_{s^h+\eps\psi_i}$, respectively.  Clearly, each smoother application, a sweep over all nodes in $\mathcal{T}$, will require at least one solution of the Glen-Stokes problem \eqref{eq:glenstokesweak}, namely solving with the geometry determined by the current surface elevation $s^h$.  However, formulas \eqref{eq:rhozero} and \eqref{eq:rholocalderiv} as stated are prohibitively expensive; a Stokes solve is required  for each mesh node.
-
-Thus we seek a less expensive way to estimate the surface velocity for a perturbed surface elevation with a small ``bump'' $\eps\psi_i$.  The nonlinearities in this Glen-Stokes problem should be unimportant, and it would seem that the most important change to the velocity and pressure fields from a small bump perturbation is through the perturbed gravitational load applied to the linearized problem around the state $s^h$.  (Versus the additional effect of a perturbed normal direction on the surface, for example.)
-
-In fact, let us fix a current surface elevation $s^h$ and assume that problem \eqref{eq:glenstokesweak} for $\Lambda_{s^h}$ yields solution $\bu^h,p^h$ at the convergence of its (Newton) iteration.  Noting that we are using a stable mixed space for this Glen-Stokes problem (Section \ref{sec:fe}), the final step in the iteration can be regarded as providing the solution of a linear system
+FIXME Let us fix a current surface elevation $s^h$ and assume that problem \eqref{eq:glenstokesweak} for $\Lambda_{s^h}$ yields solution $\bu^h,p^h$ at the convergence of its (Newton) iteration.  Noting that we are using a stable mixed space for this Glen-Stokes problem (Section \ref{sec:fe}), the final step in the iteration can be regarded as providing the solution of a linear system
 \begin{equation}
     \begin{bmatrix} A & B^\top \\
                     B & 0      \end{bmatrix}
@@ -539,6 +552,7 @@ FIXME time-dependent runs
 \textbf{Acronym} {\Large$\strut$} & \textbf{Definition} & \textbf{Reference} \\ \hline
 CMB & climatic mass balance & Section \ref{sec:stokesgeometry} \\
 FE & finite element & Section \ref{sec:fe} \\
+GS & Gauss-Seidel & Section \ref{sec:smoothers} \\
 IDO & ice dynamics operator & Section \ref{sec:weakido}, equation \eqref{eq:ido} \\
 IIGP & implicit ice geometry problem & Section \ref{sec:evolution} \\
 MCD & multilevel constraint decomposition & Section \ref{sec:mcdstokes}, Pseudocodes \ref{pc:mcdn-vcycle} and \ref{pc:mcdn-solver} \\
