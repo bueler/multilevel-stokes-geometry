@@ -8,7 +8,7 @@ plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.fontset"] = "cm"
 
 fsize=18.0
-bigfsize=20.0
+bigfsize=24.0
 
 def genbasicfig(xshift=0.0):
     x = np.linspace(0.0,10.0,1001)
@@ -27,7 +27,7 @@ def genbasicfig(xshift=0.0):
     return x + xshift, s, b
 
 def drawclimate(x,s):
-    plt.text(x[10], s[10]+2.7, r'$a(x,y)$', fontsize=bigfsize, color='k')
+    plt.text(x[10], s[10]+2.7, r'$a$', fontsize=bigfsize, color='k')
     for j in range(10):
         xarr = x[50+100*j]
         if j>0:
@@ -44,9 +44,9 @@ plt.text(x[600] - 1.0, b[600] + 0.4 * s[600], r'$\Lambda_s$',
          fontsize=bigfsize, color='k')
 drawclimate(x,s)
 # mark top surface
-plt.text(x[250], s[250] + 1.5, r'$s(x,y)$', fontsize=bigfsize, color='k')
+plt.text(x[250], s[250] + 0.7, r'$s$', fontsize=bigfsize, color='k')
 # mark bottom surface
-plt.text(x[650], b[650] - 0.5, r'$b(x,y)$', fontsize=bigfsize, color='k')
+plt.text(x[650], b[650] - 0.5, r'$b$', fontsize=bigfsize, color='k')
 # show \Omega
 yR = min(b) - 0.5
 plt.plot([min(x),max(x)],[yR,yR],color='k',lw=1.0)
