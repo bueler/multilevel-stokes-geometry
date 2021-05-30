@@ -80,6 +80,9 @@ urlcolor=black    % ...
 \newcommand{\qq}{{\text{q}}}
 \newcommand{\rr}{{\text{r}}}
 
+% norm |||x|||
+\newcommand{\vertiii}[1]{{\left\vert\kern-0.25ex\left\vert\kern-0.25ex\left\vert #1 \right\vert\kern-0.25ex\right\vert\kern-0.25ex\right\vert}}
+
 % numbering
 \setcounter{tocdepth}{3}
 \makeatletter
@@ -307,7 +310,7 @@ We will approximate the true derivative $\Phi'(s)[t]$ by the difference quotient
            0, & s=b \text{ and } t = 0
                  \end{cases} \notag
 \end{align}
-Thus a necessary condition for differentiability of $\Phi$ is that $\bu|_{s+\eps t} \cdot \bn_{s+\eps t} = o(\eps)$ on the ice-free area $s=b$, i.e.~the dynamical part of the SKE vanishes for small ice masses on bare ground.  It is reasonable to suppose this is so when such small ice masses do not slide.
+Thus a necessary condition for differentiability of $\Phi$ is that $\bu|_{s+\eps t} \cdot \bn_{s+\eps t} = o(\eps)$ on the ice-free area $s=b$.  In physical terms this means that the dynamical part of the SKE vanishes for small ice masses on bare ground, and it is reasonable to suppose this is so if the ice cannot slide.
 
 In the next three sections we will construct an iterative, multilevel finite element solver for SIGP weak form \eqref{eq:sigpweakform}.  When we approximate the true derivative $\Phi'(s)[t]$ by a difference quotient, a significant issue arises because two Glen-Stokes solutions over the ice domains $\Lambda_{s+\eps t}$ and $\Lambda_s$ are seemingly required.  While this would imply a very large numbers of expensive dynamical solves, in Section \ref{sec:smoothers} we propose a less-expensive approximation.
 
@@ -357,7 +360,7 @@ where $F^h(s)[r] = - \ip{\Phi^h(s)}{r}$; compare \eqref{eq:sigpfunctional}.  We 
 
 In this section we propose solvers for \eqref{eq:fesigpweakform}, namely certain projected and nonlinear iterations, variants of the Gauss-Seidel and Jacobi methods, which are suitable for VIs \cite{KinderlehrerStampacchia1980}.  While these iterations are adequate smoothers in a multilevel method (next section), they converge slowly if used as single-level methods.  However, because of the non-locality of the SIGP functional $F^h$, we must make careful approximations in order to retain adequate per-iteration performance.
 
-Given a current surface elevation $s^h\in \mathcal{K}^h$, our smoothers will sweep through the $m$ vertices ($P_1$ nodes) of $\mathcal{T}$ in a fixed order, solving one-dimensional VI problems and then updating $s^h$.   Denote an arbitrary vertex of $\mathcal{T}$ by $(x_i,y_i)$ and let $\psi_i \in \mathcal{V}^h$ be the corresponding hat function, with $\psi_i(x_j,y_j)=\delta_{ij}$ \cite{Elmanetal2014}.  Also let $\mathcal{D}_+^h = \{t^h \in \mathcal{V}^h \,:\, t^h \ge 0\}$.  Note that $\psi_i \in \mathcal{D}_+^h$ and that $s^h + c \psi_i \in \mathcal{K}^h$ if and only if $c\ge \beta_i^{s^h} = b^h(x_i,y_i) - s^h(x_i,y_i)$.
+Given a current surface elevation $s^h\in \mathcal{K}^h$, our smoothers will sweep through the $m$ vertices ($P_1$ nodes) of $\mathcal{T}$ in a fixed order, solving one-dimensional VI problems and then updating $s^h$.   Denote an arbitrary vertex of $\mathcal{T}$ by $(x_i,y_i)$ and let $\psi_i \in \mathcal{V}^h$ be the corresponding hat function, with $\psi_i(x_j,y_j)=\delta_{ij}$ \cite{Elmanetal2014}.  Also let $\mathcal{D}_+^h = \{t^h \in \mathcal{V}^h \,:\, t^h \ge 0\}$.  Note that $\psi_i \in \mathcal{D}_+^h$ and that $s^h + c \psi_i \in \mathcal{K}^h$ if and only if $c\ge \beta_i^{s^h} = b^h(x_i,y_i) - s^h(x_i,y_i)$.  One can call $\beta_i^{s^h}$ the pointwise defect obstacle \cite{GraeserKornhuber2009}.
 
 The one-dimensional VI at node $i$ is derived from \eqref{eq:fesigpweakform} using $r = s^h+\gamma \psi_i$ and $s = s^h+c \psi_i$ for scalars $\gamma,c$.  Specifically, we seek $c \ge \beta_i^{s^h}$ such that
 \begin{equation}
@@ -389,18 +392,17 @@ If each pointwise update $s^h \gets s^h + c \psi_i$ is done immediately then the
 
 \begin{pcode}[ht]
 \begin{pseudo*}
-\pr{pngs\_slow}(s^h,b^h,a,\id{eps}=1.0\,m,\id{omega}=1)\text{:} \\+
+\pr{pngs\_slow}(s^h,b^h,\id{eps}=1.0,\id{omega}=1.0)\text{:} \\+
     \ct{check admissibility: $s^h \ge b^h$} \\
-    function $\rho_i(s^h; c) = F^h(s^h+c\psi_i)[\psi_i] - \ip{a}{\psi_i}$ \\
     for $i = 0,\dots,m-1$ \\+
         $\alpha_i = (\rho_i(s^h; \eps) - \rho_i(s^h; 0))/\eps$  \qquad\qquad \ct{FD for Jacobian diagonal entry} \\
-        $\beta_i = b^h(x_i,y_i) - s^h(x_i,y_i)$ \qquad\qquad \ct{pointwise defect obstacle} \\
-        if $J_{ii} > 0$ \\+
-            $(s^h)_i \gets \max\{(s^h)_i - \id{omega}\,\rho_i(s^h; 0) / \alpha_i, \beta_i\}$ \\-
+        if $\alpha_i > 0$ \\+
+            $c_i = - \rho_i(s^h; 0) / \alpha_i$ \\
+            $(s^h)_i \gets \max\{(s^h)_i + \id{omega}\,c_i, (b^h)_i\}$ \\-
         else \\+
             $(s^h)_i \gets \beta_i$ \qquad\qquad \ct{non-elliptic case}
 \end{pseudo*}
-\caption{Projected nonlinear GS iteration, an expensive in-place solver (smoother) using a finite-difference derivative.  Note that $2m$ solutions of Glen-Stokes problem \eqref{eq:glenstokesweak} are required per application.}
+\caption{Projected nonlinear GS iteration, an expensive in-place smoother using a finite-difference (FD) derivative for the Jacobian diagonal.  Glen-Stokes problem \eqref{eq:glenstokesweak} is solved $2m$ times per application of \pr{pngs\_slow}.}
 \label{pc:pngsslow}
 \end{pcode}
 
@@ -459,23 +461,57 @@ FIXME Pseudocode \ref{pc:pnj} for PNJ with bump approximation
 
 \begin{pcode}[ht]
 \begin{pseudo*}
-\pr{pnj}(j,g^j,y^j,N^j,\ell^j,\phi^j,\id{newtonits}=2,\id{omega}=0.67)\text{:} \\+
-    \ct{check admissibility: $y^j \ge \phi^j$} \\
-    for $k=1,\dots,\id{newtonits}$ \\+
-        $\rho_p(c) := N^j(g^j+y^j+c\psi_p^j)[\psi_p^j] - \ell^j[\psi_p^j]$ \\
-        $r_p, \delta_p = \rho_p(0), \rho_p'(0)$ \qquad\qquad\qquad\qquad \ct{compute and save for all $p$}\\
-        for $p=1,\dots,m_j$ \\+
-            $c = \pr{pointupdate}(r_p, \delta_p,y_p,\phi_p,\ell^j[\psi_p^j])$ \\
-            $y_p \gets y_p + \id{omega}\,c$
+\pr{pnj}(s^h,b^h,\id{omega}=1.0)\text{:} \\+
+    \ct{check admissibility: $s^h \ge b^h$} \\
+    evaluate $\{\rho_i(s^h; 0)\}_{i=0}^{m-1}$  \qquad\qquad \ct{and save the final Newton step linear system} \\
+    for $i = 0,\dots,m-1$ \\+
+        $\alpha_i = (A^{-1})_{ii}$  \qquad\qquad \ct{FIXME: give correct Jacobian diagonal entry} \\
+        if $\alpha_i > 0$ \\+
+            $c_i = - \rho_i(s^h; 0) / \alpha_i$ \\--
+    for $i = 0,\dots,m-1$ \\+
+        if $\alpha_i > 0$ \\+
+            $(s^h)_i \gets \max\{(s^h)_i + \id{omega}\,c_i, (b^h)_i\}$ \\-
+        else \\+
+            $(s^h)_i \gets \beta_i$ \qquad\qquad \ct{non-elliptic case}
 \end{pseudo*}
-\caption{Projected nonlinear Jacobi as a smoother.}
+\caption{Projected nonlinear Jacobi smoother using a bump approximation for the Jacobian diagonal entry $\alpha_i$.  Problem \eqref{eq:glenstokesweak} is solved only once per application of \pr{pnj}, but additional linear algebra is needed to compute $\alpha_i$.}
 \label{pc:pnj}
 \end{pcode}
+
+We finish this section with some observations which are supported by the results reported in Section \ref{sec:results}.  Constructing an efficient smoother is the most difficult part of building an effective multilevel scheme for numerically solving the SIGP.  In the time-stepping approach to steady state, used by almost all existing models, the difficulty is reflected in the nontrivial determination of a valid conditionally-stable time step criterion for the evolving geometry model.  Here the concern is associated to the ``ellipticity'' of the coupled equations for the SIGP, reflected in whether the diagonal Jacobian entry $\alpha_i$, used in the above pointwise smoothers, is indeed positive.
+
+In fact, suppose $s^h$ gives the $P_1$ geometry of the ice which solves the discrete SIGP.  For each icy node $i$ in $\Omega$, i.e.~such that $(s^h)_i>(b^h)_i$, one can see that $\alpha_i>0$ if and only if the addition of a thin (e.g.~one meter) layer of ice to surface of the ice, covering the vicinity of node $i$ (e.g.~the support of $\psi_i$) will cause a dynamical response in which the surface goes down.  One can show this is so for the SIA theory \cite{JouvetBueler2012}, but, even for nonsliding ice, we know of no proof that the Glen-Stokes SIGP always gives $\alpha_i>0$ at icy locations.  It follows that pointwise smoothers like \pr{pngs\_slow} and \pr{pnj} are inherently fragile across a full range of glacier geometries.
 
 
 \section{Multilevel constraint decomposition} \label{sec:mcdstokes}
 
-FIXME CP residual norm
+In this section we propose a multilevel scheme for solving the discrete SIGP weak form \eqref{eq:fesigpweakform} using iterated V-cycles of a new method descended from the multilevel constraint decomposition (MCD) method of \cite{Tai2003} (see also \cite{GraeserKornhuber2009}).  Our nonlinear variant of MCD, denoted MCDN, uses a full approximation scheme (FAS) multigrid \cite{Trottenbergetal2001} approach which transfers both the current residual and an approximation of the solution down to coarser levels.
+
+We need notation for multiple mesh levels.  Suppose $\mathcal{T}^0$ is a fixed triangulation of $\Omega$, the coarse level.  Suppose $\{\mathcal{T}^j\}_{j=0}^J$ are standard uniform refinements of $\mathcal{T}^0$ by edge bisection so that each $T \in \mathcal{T}^j$ becomes four similar triangles in $\mathcal{T}^{j+1}$ \cite{Braess2007}.  (If $d=1$ this becomes simple halving of each interval.)  We seek a solution of \eqref{eq:fesigpweakform} on the fine level $\mathcal{T}^J$.  Let $\mathcal{V}^j$ be the $P_1$ FE space on $\mathcal{T}^j$ and $m_j$ be the number of nodes in, and dimension of, $\mathcal{V}^j$.
+
+Suppose $b^J \in \mathcal{V}^J$ denotes the fine-level bed topography.  On this fine level the admissible surface elevations form a closed and convex set $\mathcal{L}^J = \{r^J \ge b^J, r^J|_{\partial\Omega} = b^J|_{\partial\Omega}\} \subset \mathcal{V}^J$.  However, instead of defining such admissible sets on each level, presumably via coarse interpolants of $b^J$, we follow \cite{GraeserKornhuber2009} in creating a multilevel decomposition starting from the defect obstacle for the current fine-level iterate $s^J$.  That is, suppose FIXME
+
+Before describing the MCDN approach we should first be clear about when an iteration has converged.  For a discrete obstacle $\varphi^j \in \mathcal{V}^j$, an admissible current iterate $s^j\in \{r^j \ge \varphi^j\} \subset \mathcal{V}^j$, and a residual vector $F^j \in (\mathcal{V}^j)'$ let
+\begin{equation}
+\vertiii{F^j}_{(s^j,\varphi^j)} = \left(\sum_{s_i > \varphi_i} |F[\psi_i]|^2 + \sum_{s_i = \varphi_i} |\min\{F[\psi_i],0\}|^2\right)^{1/2} \label{eq:cpnorm}
+\end{equation}
+be the ``CP residual norm'' associated to the finite-dimensional complementarity problem (CP) $s^j \ge \varphi^j$, $F(s^j) \ge 0$, and $(s^j-\varphi^j) F(s^j) = 0$.  Note $s^j \in \mathcal{V}^j$ solves this CP if and only if $s^j$ is admissible and $\vertiii{F(s^j)}_{(s^j,\varphi^j)}=0$.  As shown in Pseudocode \ref{pc:mcdn-solver} we will iterate MCDN V-cycles until the CP residual norm is small according to either an absolute or a relative tolerance.
+
+\begin{pcode}[ht]
+\begin{pseudo*}
+\pr{mcdn-solver}(J,s^J,b^J,\id{atol}=10^{-20},\id{rtol}=10^{-3},\id{cyclemax}=100)\text{:} \\+
+    function $\rho(s)[r] = F^J(s)[r] - \ip{a}{r}$ \qquad\qquad \ct{residual of \eqref{eq:fesigpweakform}} \\
+    $\rho_0=\vertiii{\rho(s^J)}_{(s^J,b^J)}$ \\
+    for $k=1,\dots,\id{cyclemax}$ \\+
+        $\chi^J = b^J - s^J$ \qquad\qquad \ct{fine-level defect obstacle} \\
+        $s^J \gets s^J + \pr{mcdn-vcycle}(J,s^J,\chi^J)$ \\
+        $\rho_k=\vertiii{\rho(s^J)}_{(s^J,b^J)}$ \\
+        if $\rho_k < \id{atol}$ or $\rho_k \le \id{rtol} \, \rho_0$ \\+
+            break \\--
+\end{pseudo*}
+\caption{The SIGP is solved by iterating V-cycles (Pseudocode \ref{pc:mcdn-vcycle}) until the CP residual norm \eqref{eq:cpnorm} is small.}
+\label{pc:mcdn-solver}
+\end{pcode}
 
 FIXME MCD theory
 
@@ -501,33 +537,17 @@ FIXME nonlinear MCD V-cycle Pseudocode \ref{pc:mcdn-vcycle}
       $\text{\pr{smoother}}^{\text{\id{up}}}(j,g^j,z^j,N^j,\ell^j,\chi^j)$ \qquad \ct{smoothing in $\mathcal{D}^j$} \\-
     return $z^J$
 \end{pseudo*}
-\caption{Nonlinear MCD V-cycle.}
+\caption{FIXME Nonlinear MCD V-cycle.}
 \label{pc:mcdn-vcycle}
 \end{pcode}
 
-FIXME we will iterate \pr{mcdn-vcycle} until the CP residual norm has been reduced by a tolerance factor, as in Pseudocode \ref{pc:mcdn-solver}
 
-\begin{pcode}[ht]
-\begin{pseudo*}
-\pr{mcdn-solver}(J,w^J,N,a,b,\id{rtol}=10^{-3},\id{cyclemax}=100)\text{:} \\+
-    $\ell^J = \ip{a}{\cdot}$ \\
-    $F(z)[\cdot] := N^J(z)[\cdot] - \ell^J[\cdot]$ \\
-    $r_0=\|\hat\bF(w^J)\|$ \\
-    for $s=1,\dots,\id{cyclemax}$ \\+
-        $\chi^J = b^J - w^J$ \\
-        $w^J\gets w^J+\pr{mcdn-vcycle}(J,w^J,N,\ell^J,\chi^J)$ \\
-        if $\|\hat\bF(w^J)\| \le \id{rtol} \, r_0$ \\+
-            break \\--
-\end{pseudo*}
-\caption{The SIGP is solved by iterating \pr{mcdn-vcycle}.}
-\label{pc:mcdn-solver}
-\end{pcode}
+\section{Results for steady geometry} \label{sec:results}
 
-FIXME PETSc \cite{Balayetal2020,Bueler2021} used to solve the dynamics problem and thereby evaluate the residual $F$
-
-FIXME in this paper the Glen-Stokes problem is solved by Newton linearization and (parallel) direct solution of the Newton step equations; however, geometric multigrid is available already for Glen-Stokes dynamics \cite{IsaacStadlerGhattas2015}; see also \cite{BrownSmithAhmadia2013} and \cite{Tuminaroetal2016} which solve a first-order approximation of the Glen-Stokes ice sheet problem by geometric and algebraic multigrid, respectively
+FIXME in this paper the Glen-Stokes problem is solved by Newton linearization and (parallel) direct solution of the Newton step equations; Firedrake and PETSc \cite{Balayetal2020,Bueler2021} used to solve this dynamics problem and thereby evaluate the residual $F$; geometric multigrid schemes exist for the  Glen-Stokes problem \cite{IsaacStadlerGhattas2015}; see also \cite{BrownSmithAhmadia2013} and \cite{Tuminaroetal2016} which solve a first-order approximation of the Glen-Stokes ice sheet problem by geometric and algebraic multigrid, respectively
 
 FIXME convergence results; scaling results
+
 
 \section{Multilevel methods for evolving geometry} \label{sec:evolution}
 
@@ -551,11 +571,13 @@ FIXME time-dependent runs
 \toprule
 \textbf{Acronym} {\Large$\strut$} & \textbf{Definition} & \textbf{Reference} \\ \hline
 CMB & climatic mass balance & Section \ref{sec:stokesgeometry} \\
+FAS & full approximation scheme & Section \ref{sec:mcdstokes} \\
 FE & finite element & Section \ref{sec:fe} \\
 GS & Gauss-Seidel & Section \ref{sec:smoothers} \\
 IDO & ice dynamics operator & Section \ref{sec:weakido}, equation \eqref{eq:ido} \\
 IIGP & implicit ice geometry problem & Section \ref{sec:evolution} \\
-MCD & multilevel constraint decomposition & Section \ref{sec:mcdstokes}, Pseudocodes \ref{pc:mcdn-vcycle} and \ref{pc:mcdn-solver} \\
+MCD & multilevel constraint decomposition & Section \ref{sec:mcdstokes} \\
+MCDN & multilevel constraint decomposition (nonlinear) & Section \ref{sec:mcdstokes}, Pseudocode \ref{pc:mcdn-vcycle} \\
 NCP & nonlinear complementarity problem & Section \ref{sec:stokesgeometry} \\
 PNJ & projected, nonlinear Jacobi (smoother) & Section \ref{sec:smoothers}, Pseudocode \ref{pc:pnj} \\
 SIA & shallow ice approximation & Section \ref{sec:intro} \\
