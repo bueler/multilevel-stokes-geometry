@@ -5,10 +5,10 @@
 #   1. copy partI/mcdn.py and build it out
 
 # RUNS:
-#   1. actually converges
+#   actually converges
 #      ./steady.py -sweepsonly -J JJ -smoother jacobislow -Hmin HH
-#      with JJ=1,2,3,4 and HH=0,10,100;  HH=0 seems as good as any
-#      also JJ=5
+#      with JJ=1,2,3,4,5 and HH=0,10,100;  HH=0 seems as good as any
+#      also sort of works with JJ=6 when HH=100 and -mz 8
 #      also works with -smoother gsslow
 
 import sys
