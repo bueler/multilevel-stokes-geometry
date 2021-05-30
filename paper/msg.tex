@@ -491,6 +491,19 @@ We need notation for multiple mesh levels.  Suppose $\mathcal{T}^0$ is a fixed t
 
 Suppose $b^J \in \mathcal{V}^J$ denotes the fine-level bed topography.  On this fine level the admissible surface elevations form a closed and convex set $\mathcal{L}^J = \{r^J \ge b^J, r^J|_{\partial\Omega} = b^J|_{\partial\Omega}\} \subset \mathcal{V}^J$.  However, instead of defining such admissible sets on each level, presumably via coarse interpolants of $b^J$, we follow \cite{GraeserKornhuber2009} in creating a multilevel decomposition starting from the defect obstacle for the current fine-level iterate $s^J$.  That is, suppose FIXME
 
+FIXME Figure \ref{fig:decompclassical} shows such a decomposition
+
+% figure generated in mg-glaciers/py by using decomposition_plain() in visualize.py and then:
+% $ ./obstacle.py -J 5 -jcoarse 1 -irtol 1.0e-5 -monitor -diagnostics -random -randommodes 15 -o classical.pdf
+% to get decomp_classical.pdf
+\begin{figure}[t]
+\begin{center}
+\includegraphics[width=0.7\textwidth]{fixfigs/decompclassical.pdf}
+\end{center}
+\caption{An example $d=1$ and $J=4$ MCD decomposition of the defect obstacle $\chi^J$ for an iterate $s^J$.}
+\label{fig:decompclassical}
+\end{figure}
+
 Before describing the MCDN approach we should first be clear about when an iteration has converged.  For a discrete obstacle $\varphi^j \in \mathcal{V}^j$, an admissible current iterate $s^j\in \{r^j \ge \varphi^j\} \subset \mathcal{V}^j$, and a residual vector $F^j \in (\mathcal{V}^j)'$ let
 \begin{equation}
 \vertiii{F^j}_{(s^j,\varphi^j)} = \left(\sum_{s_i > \varphi_i} |F[\psi_i]|^2 + \sum_{s_i = \varphi_i} |\min\{F[\psi_i],0\}|^2\right)^{1/2} \label{eq:cpnorm}
