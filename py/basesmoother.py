@@ -40,7 +40,7 @@ class SmootherObstacleProblem(ABC):
             Jstr += '_' if z[k] == 0.0 else '*'
         print('  %d nonzeros: ' % sum(z > 0.0) + Jstr)
 
-    def inactiveresidualnorm(self, mesh, w, r, phi, ireps=50.0):
+    def inactiveresidualnorm(self, mesh, w, r, phi, ireps=0.001):
         '''Compute the norm of the residual values at nodes where the constraint
         is NOT active.  Where the constraint is active the residual F(w) in the
         complementarity problem is allowed to have any positive value; only the
