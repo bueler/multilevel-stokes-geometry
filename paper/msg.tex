@@ -257,6 +257,8 @@ Here $\bu|_{\overline{\partial} \Lambda_s}$ denotes a trace operator on $W^{1,\p
 \label{fig:idoaction}
 \end{figure}
 
+FIXME TALK ABOUT IDO.  1 FORM IN SIA CASE. 2 LINEARIZATION DENSE.  3 SPECTRUM OF IDO DETERMINES STABILITY OF EXPLICIT TIME-STEPPING. 4 DIAGONAL OF IDO UNKNOWN BUT POSITIVE?
+
 Using the IDO, and recalling that the CMB $a$ is defined on all of $\Omega$, we may immediately re-write the \eqref{eq:strongform} in a simpler strong form, namely an NCP with a hidden dynamical problem:
 \begin{align}
 s - b &\ge 0  \label{eq:idostrongform} \\
@@ -321,7 +323,7 @@ In the next three sections we will construct an iterative, multilevel finite ele
 
 \section{Finite element discretization} \label{sec:fe}
 
-Assume $\Omega \subset \RR^d$ is polygonal and suppose $\mathcal{T}$ is a triangulation of $\Omega$.  (If $d=1$ then instead $\mathcal{T}$ denotes an interval decomposition of $\Omega$.)  Based on low expected regularity at the ice margin, we will represent surface elevations $s\in \mathcal{K}$ using the $P_1$ finite element (FE) space
+Assume $\Omega \subset \RR^d$ is polygonal and that $\mathcal{T}$ is a triangulation of $\Omega$.  (If $d=1$ then instead $\mathcal{T}$ denotes an interval decomposition of $\Omega$.)  Based on low expected regularity at the ice margin, we will represent surface elevations $s\in \mathcal{K}$ using the $P_1$ finite element (FE) space
 \begin{equation}
 \mathcal{V}^h = \{s \in C^0(\Omega) : s|_T \text{ is linear if } T \in \mathcal{T}\} \subset W^{1,\qq}(\Omega).
 \end{equation}
@@ -485,6 +487,8 @@ FIXME Pseudocode \ref{pc:pnj} for PNJ with bump approximation
 We finish this section with some observations which are supported by the results reported in Section \ref{sec:results}.  Constructing an efficient smoother is the most difficult part of building an effective multilevel scheme for numerically solving the SIGP.  In the time-stepping approach to steady state, used by almost all existing models, the difficulty is reflected in the nontrivial determination of a valid conditionally-stable time step criterion for the evolving geometry model.  Here the concern is associated to the ``ellipticity'' of the coupled equations for the SIGP, reflected in whether the diagonal Jacobian entry $\alpha_i$, used in the above pointwise smoothers, is indeed positive.
 
 In fact, suppose $s^h$ gives the $P_1$ geometry of the ice which solves the discrete SIGP.  For each icy node $i$ in $\Omega$, i.e.~such that $(s^h)_i>(b^h)_i$, one can see that $\alpha_i>0$ if and only if the addition of a thin (e.g.~one meter) layer of ice to surface of the ice, covering the vicinity of node $i$ (e.g.~the support of $\psi_i$) will cause a dynamical response in which the surface goes down.  One can show this is so for the SIA theory \cite{JouvetBueler2012}, but, even for nonsliding ice, we know of no proof that the Glen-Stokes SIGP always gives $\alpha_i>0$ at icy locations.  It follows that pointwise smoothers like \pr{pngs\_slow} and \pr{pnj} are inherently fragile across a full range of glacier geometries.
+
+FIXME SMOOTHER POSSIBILITIES.  1 COLORING (PSEUDO-COLORING WITH LATERAL SEPARATION OF A FEW ICE THICKNESSES).  2 PATCH-TYPE WHICH SOLVE LOW-DIMENSIONAL VI.
 
 
 \section{Multilevel constraint decomposition} \label{sec:mcdstokes}
