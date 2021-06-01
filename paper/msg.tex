@@ -304,9 +304,9 @@ In \eqref{eq:idoderiv} note that all quantities are extended to the whole of $\O
 
 We will assume that $\Phi'(s)[t]$ is in the dual space of $W^{1,\qq}(\Omega)$ so that \eqref{eq:sigpfunctionalderiv} is finite.  Observe that $F'$ is straightforward to compute from $\Phi'$, but further comments on \eqref{eq:idoderiv} are forthcoming.  In fact, $F'(s)[t,r]$ and $\Phi'(s)[t]$ are one-sided directional derivatives in the sense that $s+\eps t$ must be admissible, i.e.~$s+\eps t\ge b$, for all sufficiently-small $\eps>0$, which requires $t\ge 0$ on the (active) set where $s=b$.  However, to simplify our considerations we define an $s$-independent set
 \begin{equation}
-\mathcal{D}_+ = \{t \in W_0^{1,\qq}(\Omega) \,:\, t(x,y) \ge 0\}. \label{eq:infdefectset}
+\mathcal{W}_+ = \{t \in W_0^{1,\qq}(\Omega) \,:\, t(x,y) \ge 0\}. \label{eq:infdefectset}
 \end{equation}
-It follows that $\Phi'(s)[t]$ is well-defined on inputs $(s,t) \in \mathcal{K} \times \mathcal{D}_+$ and $F'(s)[t,r]$ is well-defined for $(s,t,r) \in \mathcal{K} \times \mathcal{D}_+ \times W^{1,\qq}(\Omega)$.  We will approximate the true derivative $\Phi'(s)[t]$ by the difference quotient in \eqref{eq:idoderiv}, though only in the situation where $t \in \mathcal{D}_+$ has small support.
+It follows that $\Phi'(s)[t]$ is well-defined on inputs $(s,t) \in \mathcal{K} \times \mathcal{W}_+$ and $F'(s)[t,r]$ is well-defined for $(s,t,r) \in \mathcal{K} \times \mathcal{W}_+ \times W^{1,\qq}(\Omega)$.  We will approximate the true derivative $\Phi'(s)[t]$ by the difference quotient in \eqref{eq:idoderiv}, though only in the situation where $t \in \mathcal{W}_+$ has small support.
 
 In fact the meaning of the finite difference in \eqref{eq:idoderiv} depends on the support of $t$:
 \begin{equation}
@@ -362,7 +362,7 @@ The only role of the extruded mesh in solving \eqref{eq:fesigpweakform} is in th
 
 In this section we propose solvers for \eqref{eq:fesigpweakform}, namely certain projected and nonlinear iterations which are variants of the Gauss-Seidel and Jacobi methods, but made suitable for VIs \cite{KinderlehrerStampacchia1980}.  Given a current surface elevation $s^h\in \mathcal{K}^h$, these iterations sweep through the $m$ interior vertices ($P_1$ nodes) of $\mathcal{T}$ in a fixed order, solving one-dimensional VI problems.  While these iterations are adequate smoothers in a multilevel method (next section), they converge slowly if used as single-level methods.  Because of the non-locality and density of the IDO $\Phi^h$ (Section \ref{sec:weakido}), we must make careful approximations in order to retain adequate per-iteration performance.
 
-Denote an arbitrary vertex of $\mathcal{T}$ by $(x_j,y_j)$ and let $\psi_j \in \mathcal{V}^h$ be the corresponding $P_1$ hat function, with $\psi_j(x_k,y_k)=\delta_{jk}$ \cite{Elmanetal2014}.  Let $\mathcal{D}_+^h = \{t^h \in \mathcal{V}^h \,:\, t^h \ge 0 \text{ and } t^h|_{\partial\Omega} = 0\}$.  Let $i=0,\dots,m-1$ index the interior vertices of $\mathcal{T}$, so $(x_i,y_i) \notin \partial\Omega$.  Note that $\psi_i \in \mathcal{D}_+^h$, and $s^h + c \psi_i \in \mathcal{K}^h$ if and only if $c\ge \beta_i^{s^h} = b^h(x_i,y_i) - s^h(x_i,y_i)$.  We call $\beta_i^{s^h}$ the pointwise defect obstacle \cite{GraeserKornhuber2009} for $s^h$.
+Denote an arbitrary vertex of $\mathcal{T}$ by $(x_j,y_j)$ and let $\psi_j \in \mathcal{V}^h$ be the corresponding $P_1$ hat function, with $\psi_j(x_k,y_k)=\delta_{jk}$ \cite{Elmanetal2014}.  Let $\mathcal{W}_+^h = \{t^h \in \mathcal{V}^h \,:\, t^h \ge 0 \text{ and } t^h|_{\partial\Omega} = 0\}$.  Let $i=0,\dots,m-1$ index the interior vertices of $\mathcal{T}$, so $(x_i,y_i) \notin \partial\Omega$.  Note that $\psi_i \in \mathcal{W}_+^h$, and $s^h + c \psi_i \in \mathcal{K}^h$ if and only if $c\ge \beta_i^{s^h} = b^h(x_i,y_i) - s^h(x_i,y_i)$.  We call $\beta_i^{s^h}$ the pointwise defect obstacle \cite{GraeserKornhuber2009} for $s^h$.
 
 The one-dimensional VI at interior node $i$ is derived from the discrete SIGP \eqref{eq:fesigpweakform} using $r = s^h+\gamma \psi_i$ and $s = s^h+c \psi_i$ for some scalars $\gamma,c$.  Specifically, we seek $c \ge \beta_i^{s^h}$ such that
 \begin{equation}
@@ -493,13 +493,43 @@ FIXME SMOOTHER POSSIBILITIES.  1 COLORING (PSEUDO-COLORING WITH LATERAL SEPARATI
 
 \section{Multilevel constraint decomposition} \label{sec:mcdstokes}
 
-In this section we propose a multilevel scheme for solving the discrete SIGP weak form \eqref{eq:fesigpweakform} using iterated V-cycles of a new method descended from the multilevel constraint decomposition (MCD) method of \cite{Tai2003} (see also \cite{GraeserKornhuber2009}).  Our nonlinear variant of MCD, denoted MCDN, uses a full approximation scheme (FAS) multigrid \cite{Trottenbergetal2001} approach which transfers both the current residual and an approximation of the solution down to coarser levels.
+In this section we propose a new multilevel scheme for solving the discrete SIGP weak form \eqref{eq:fesigpweakform} using iterated V-cycles.  The method descends from the multilevel constraint decomposition (MCD) method of \cite{Tai2003} (see also \cite{GraeserKornhuber2009}).  Our nonlinear variant, denoted MCDN, uses a full approximation scheme (FAS) multigrid \cite{Trottenbergetal2001} approach which transfers both the current residual and an approximation of the solution down to coarser levels.
 
-We need notation for multiple mesh levels.  Suppose $\mathcal{T}^0$ is a fixed triangulation of $\Omega$, the coarse level.  Suppose $\{\mathcal{T}^j\}_{j=0}^J$ are standard uniform refinements of $\mathcal{T}^0$ by edge bisection so that each $T \in \mathcal{T}^j$ becomes four similar triangles in $\mathcal{T}^{j+1}$ \cite{Braess2007}.  (If $d=1$ this becomes simple halving of each interval.)  We seek a solution of \eqref{eq:fesigpweakform} on the fine level $\mathcal{T}^J$.  Let $\mathcal{V}^j$ be the $P_1$ FE space on $\mathcal{T}^j$ and $m_j$ be the number of nodes in, and dimension of, $\mathcal{V}^j$.
+Regarding notation for multiple mesh levels, suppose $\mathcal{T}^0$ is a fixed triangulation of $\Omega$, and call it the coarse level.  For $J\ge 0$, suppose $\{\mathcal{T}^j\}_{j=1}^J$ are standard uniform refinements of $\mathcal{T}^0$ by edge bisection so that each $T \in \mathcal{T}^j$ becomes four similar triangles in $\mathcal{T}^{j+1}$ \cite{Braess2007}.  (We assume simple halving of each interval when $d=1$.)  Let $\mathcal{V}^j$ be the $P_1$ FE space on $\mathcal{T}^j$ and let $\mathcal{V}_0^j \subset \mathcal{V}^j$ be the $P_1$ functions which are zero on $\partial\Omega$.  If $m_j$ is the number of interior nodes in $\mathcal{T}$ then $\dim(\mathcal{V}_0^j)=m_j$.
 
-Suppose $b^J \in \mathcal{V}^J$ denotes the fine-level bed topography.  On this fine level the admissible surface elevations form a closed and convex set $\mathcal{L}^J = \{r^J \ge b^J, r^J|_{\partial\Omega} = b^J|_{\partial\Omega}\} \subset \mathcal{V}^J$.  However, instead of defining such admissible sets on each level, presumably via coarse interpolants of $b^J$, we follow \cite{GraeserKornhuber2009} in creating a multilevel decomposition starting from the defect obstacle for the current fine-level iterate $s^J$.  That is, suppose FIXME
+We seek an admissible solution to \eqref{eq:fesigpweakform} on the fine level $\mathcal{T}^J$.  Suppose $b^J \in \mathcal{V}^J$ denotes the fine-level bed topography.  On this fine level the admissible surface elevations form a closed and convex set
+\begin{equation}
+\mathcal{K}^J = \{r^J \in \mathcal{V}^J \,:\, r^J \ge b^J, r^J|_{\partial\Omega} = b^J|_{\partial\Omega}\}.  \label{eq:singleadmissible}
+\end{equation}
+However, we follow \cite{GraeserKornhuber2009} in creating a multilevel decomposition of problem \eqref{eq:fesigpweakform} based on a ``defect obstacle'' formulation, and not direct use of the set $\mathcal{K}^J$.  That is, suppose $s^J \in \mathcal{K}^J$ is an admissible current iterate and let
+\begin{equation}
+\chi^J = b^J - s^J \in \mathcal{V}_0^J \label{eq:finedefectobstacle}
+\end{equation}
+be the associated defect obstacle, a nonpositive function on $\Omega$.  Note that $z^J \in \mathcal{V}_0^J$ is an admissible perturbation of $s^J$, i.e.~$s^J+z^J \in \mathcal{K}^J$, if and only if $z^J \ge \chi^J$.
 
-FIXME Figure \ref{fig:decompclassical} shows such a decomposition
+Also following \cite{GraeserKornhuber2009}, we define the monotone restriction operator $\mR : \mathcal{V}_0^j \to \mathcal{V}_0^{j-1}$.  Suppose $z^j \in \mathcal{V}_0^j$ is expanded in interior-node hat functions $\psi_i^j$, and denote the level-$j$ nodes as $(x_i^j,y_i^j)$.  If $z^j = \sum_{i=0}^{m_j-1} z^j[i] \psi_i^j$ for coefficients $z^j[i]\in \RR$ then
+\begin{equation}
+\mR z^j = \sum_{\ell=0}^{m_{j-1}-1} \max\left\{z^j[i] \,:\,\psi_\ell^{j-1}(x_i^j,y_i^j) \right\}\,\psi_\ell^{j-1}.  \label{eq:monotonerestriction}
+\end{equation}
+In words, the coefficients for $\mR z^j \in \mathcal{V}_0^j$ are computed by maximizing the finer-level nodal values over the (open) supports of each each coarser-level hat function.
+
+Now we can recursively define a defect obstacle on each level:
+\begin{equation}
+\chi^{j-1} = \mR \chi^j  \label{eq:recursivedefectobstacle}
+\end{equation}
+for $j=1,\dots,J$, as shown for example in Figure \ref{fig:decompclassical}.  We also use the (nonpositive) differences of the defect obstacles,
+\begin{equation}
+\phi^j = \chi^j - \chi^{j-1}.  \label{eq:downobstacles}
+\end{equation}
+In terms of these functions, for $j=0,\dots,J$ we define down-constraint sets
+\begin{equation}
+\mathcal{D}^j = \left\{z^j \in \mathcal{V}_0^j \,:\, z^j \ge \chi^j\right\}.  \label{eq:downconstraintset}
+\end{equation}
+and up-constraint sets
+\begin{equation}
+\mathcal{U}^j = \left\{z^j \in \mathcal{V}_0^j \,:\, z^j \ge \phi^j\right\}.  \label{eq:upconstraintset}
+\end{equation}
+This terminology of down- and up-constraint sets is explained by noting that the smoother will solve one-dimensional VIs on each level, as described in the previous section, where the admissible sets are different as one goes down and then up in a V-cycle.
 
 % figure generated in mg-glaciers/py by using decomposition_plain() in visualize.py and then:
 % $ ./obstacle.py -J 5 -jcoarse 1 -irtol 1.0e-5 -monitor -diagnostics -random -randommodes 15 -o classical.pdf
@@ -508,11 +538,40 @@ FIXME Figure \ref{fig:decompclassical} shows such a decomposition
 \begin{center}
 \includegraphics[width=0.7\textwidth]{fixfigs/decompclassical.pdf}
 \end{center}
-\caption{An example $d=1$ and $J=4$ MCD decomposition of the defect obstacle $\chi^J$ for an iterate $s^J$.}
+\caption{An example ($d=1$, $J=4$) of an MCD decomposition of the defect obstacle $\chi^J$.  Defect obstacles $\chi^j$ are generated using the monotone restriction operator $\mR$ as in \eqref{eq:recursivedefectobstacle}.}
 \label{fig:decompclassical}
 \end{figure}
 
-Before describing the MCDN approach we should first be clear about when an iteration has converged.  For a discrete obstacle $\varphi^j \in \mathcal{V}^j$, an admissible current iterate $s^j\in \{r^j \ge \varphi^j\} \subset \mathcal{V}^j$, and a residual vector $F^j \in (\mathcal{V}^j)'$ let
+FIXME MCD theory
+
+FIXME DEBUG THIS PSEUDOCODE nonlinear MCD V-cycle Pseudocode \ref{pc:mcdn-vcycle}
+
+\begin{pcode}[ht]
+\begin{pseudo*}
+\pr{mcdn-vcycle}(J,s^J,b^J,\ell^J,\id{down}=0,\id{coarse}=1,\id{up}=1)\text{:} \\+
+    $\chi^J = b^J - s^J$ \\
+    $g^J = s^J$ \\
+    for $j=J$ downto $j=1$ \\+
+      $\chi^{j-1} = \mR \chi^j$ \\
+      $\phi^j = \chi^j - \chi^{j-1}$ \\
+      $y^j = 0$ \\
+      $\text{\pr{smoother}}^{\text{\id{down}}}(y^j,g^j,\ell^j,\phi^j)$ \qquad \ct{smoothing in $\mathcal{D}^j$} \\
+      $f = F^j(g^j+y^j) - \ell^j$ \\
+      $g^{j-1} = \iR(g^j + y^j)$ \\
+      $\ell^{j-1} = F^{j-1}(g^{j-1}) - R f$ \\-
+    $y^0 = 0$ \\
+    $\text{\pr{smoother}}^{\text{\id{coarse}}}(y^0,g^0,\ell^0,\chi^0)$ \qquad \ct{smoothing in $\mathcal{U}^0$} \\
+    $z^0 = y^0$ \\
+    for $j=1$ to $j=J$ \\+
+      $z^j = P z^{j-1} + y^{j}$ \\
+      $\text{\pr{smoother}}^{\text{\id{up}}}(z^j,g^j,\ell^j,\chi^j)$ \qquad \ct{smoothing in $\mathcal{U}^j$} \\-
+    return $z^J$
+\end{pseudo*}
+\caption{FIXME Nonlinear MCD V-cycle.}
+\label{pc:mcdn-vcycle}
+\end{pcode}
+
+Finally, we need to be clear about when an iteration has converged.  For a discrete obstacle $\varphi^j \in \mathcal{V}^j$, an admissible current iterate $s^j\in \{r^j \ge \varphi^j\} \subset \mathcal{V}^j$, and a residual vector $F^j \in (\mathcal{V}^j)'$ let
 \begin{equation}
 \vertiii{F^j}_{(s^j,\varphi^j)} = \left(\sum_{s_i > \varphi_i} |F[\psi_i]|^2 + \sum_{s_i = \varphi_i} |\min\{F[\psi_i],0\}|^2\right)^{1/2} \label{eq:cpnorm}
 \end{equation}
@@ -532,34 +591,6 @@ be the ``CP residual norm'' associated to the finite-dimensional complementarity
 \end{pseudo*}
 \caption{The SIGP is solved by iterating V-cycles (Pseudocode \ref{pc:mcdn-vcycle}) until the CP residual norm \eqref{eq:cpnorm} is small.}
 \label{pc:mcdn-solver}
-\end{pcode}
-
-FIXME MCD theory
-
-FIXME nonlinear MCD V-cycle Pseudocode \ref{pc:mcdn-vcycle}
-
-\begin{pcode}[ht]
-\begin{pseudo*}
-\pr{mcdn-vcycle}(J,w^J,N,\ell^J,\chi^J,\id{down}=1,\id{coarse}=1,\id{up}=0)\text{:} \\+
-    $g^J = w^J$ \\
-    for $j=J$ downto $j=1$ \\+
-      $\chi^{j-1} = \mR \chi^j$ \\
-      $\phi^j = \chi^j - P\chi^{j-1}$ \\
-      $y^j = 0$ \\
-      $\text{\pr{smoother}}^{\text{\id{down}}}(j,g^j,y^j,N^j,\ell^j,\phi^j)$ \qquad \ct{smoothing in $\mathcal{K}^j$} \\
-      $F = N^j(g^j+y^j) - \ell^j$ \\
-      $g^{j-1} = \iR(g^j + y^j)$ \\
-      $\ell^{j-1} = N^{j-1}(g^{j-1}) - R F$ \\-
-    $y^0 = 0$ \\
-    $\text{\pr{smoother}}^{\text{\id{coarse}}}(0,g^0,y^0,N^0,\ell^0,\chi^0)$ \\
-    $z^0 = y^0$ \\
-    for $j=1$ to $j=J$ \\+
-      $z^j = P z^{j-1} + y^{j}$ \\
-      $\text{\pr{smoother}}^{\text{\id{up}}}(j,g^j,z^j,N^j,\ell^j,\chi^j)$ \qquad \ct{smoothing in $\mathcal{D}^j$} \\-
-    return $z^J$
-\end{pseudo*}
-\caption{FIXME Nonlinear MCD V-cycle.}
-\label{pc:mcdn-vcycle}
 \end{pcode}
 
 
@@ -589,6 +620,8 @@ FIXME time-dependent runs
 
 \renewcommand{\arraystretch}{1.1}
 \begin{longtable}{l|l|l}
+\caption{Glossary of acronyms used in this paper.}
+\label{tab:acronyms} \\ % \\ REQUIRED HERE
 \toprule
 \textbf{Acronym} {\Large$\strut$} & \textbf{Definition} & \textbf{Reference} \\ \hline
 CMB & climatic mass balance & Section \ref{sec:stokesgeometry} \\
@@ -608,8 +641,6 @@ SKE & surface kinematical equation & Section \ref{sec:stokesgeometry}, equation 
 VI & variational inequality & Section \ref{sec:weakido} \\
 WU & work units & Section \ref{sec:mcdstokes} \\ % final \\ required
 \bottomrule
-\caption{Glossary of acronyms used in this paper.}
-\label{tab:acronyms}
 \end{longtable}
 
 \end{document}
