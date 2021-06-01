@@ -50,17 +50,17 @@
 \newcommand{\bus}{\bu|_s}
 
 
-\title{Evolution of Ice Sheet Geometry using Stokes Dynamics}
+\title{Evolution of \\ ice sheet geometry \\ using Stokes dynamics}
 
 %\subtitle{Subtitle}
 
 \author{Ed Bueler}
 
-\titlegraphic{\includegraphics[width=0.55\textwidth]{figs/extruded.png} \\ \includegraphics[width=0.18\textwidth]{figs/uafbw.png}}
+\titlegraphic{\includegraphics[width=0.7\textwidth]{figs/extruded.png} \\ \vspace{-3mm} \includegraphics[width=0.15\textwidth]{figs/uafbw.png}}
 
-\institute{University of Alaska Fairbanks}
+%\institute{University of Alaska Fairbanks}
 
-\date{\phantom{foo} \bigskip \bigskip \\ SIAM GS21 \\ with assistance from Lawrence Mitchell}
+\date{\phantom{foo} \bigskip \bigskip \bigskip \\ SIAM GS21 \\ with assistance from Lawrence Mitchell}
 
 
 \begin{document}
@@ -81,15 +81,15 @@
 \begin{itemize}
 \item a non-shallow glacier interacting with the climate
     \begin{itemize}
-    \item the simplest such problem (nonsliding, isothermal)
-    \item re~\emph{steady}: solve it and you can handle implicit steps too
+    \item only the simplest such problem (nonsliding, isothermal)
+    \item re~\emph{steady}: solve this and you can handle implicit steps too
     \end{itemize}
 \item data given on fixed $\Omega \subset \RR^2$:
     \begin{itemize}
     \item climatic mass balance $a(x,y)$ \hfill $\gets$ \emph{steady climate}
     \item bed elevation $b(x,y)$
     \end{itemize}
-\item \emph{determine surface elevation $s(x,y)$ on $\Omega$ and domain $\Lambda_s \subset \RR^3$}
+\item determine: surface elevation $s(x,y)$ on $\Omega$ and domain $\Lambda_s \subset \RR^3$
 \end{itemize}
 \end{frame}
 
@@ -119,20 +119,28 @@ s - b &\ge 0 && \text{on $\Omega$} \\
 \end{frame}
 
 
-\begin{frame}{what do existing ice sheet models do?}
-
-FIXME screenshot from Seguinot
+\begin{frame}{existing ice sheet models}
 
 \begin{itemize}
-\item almost no one is addressing the SIGP directly
+\item almost no one is solving the SIGP directly, or implicit time-stepping
     \begin{itemize}
-    \item except \cite{WirbelJarosch2020}, but nonscalably and with ``fake ice'' extension
-    \item note scalable solution of fixed-geometry Glen-Stokes by Isaac and others \cite{IsaacStadlerGhattas2015}
+    \item except Wirbel \& Jarosch \cite{WirbelJarosch2020} \dots nonscalable, ``fake ice''
+    \item optimal fixed-geometry Stokes solver (Isaac and others \cite{IsaacStadlerGhattas2015})
     \end{itemize}
-\item \emph{warning}: this free boundary problem is a barrier to exact numerical mass conservation, regardless of dynamical and/or numerical choices \cite{Bueler2021conservation}
-\item what are people doing?  \emph{explicit time-stepping with $s \ge b$ enforced by truncation}
-\item \alert{show movie clip}
+%\item \emph{warning}: barrier to exact numerical mass conservation \cite{Bueler2021conservation}
+\item what are people doing?
+    \begin{itemize}
+    \item \alert{explicit time-stepping with $s \ge b$ enforced by truncation} (below)
+    \end{itemize}
 \end{itemize}
+
+\medskip
+\begin{columns}
+    \column{0.8\textwidth}
+        \hfill \includegraphics[width=0.8\textwidth]{figs/seguinot.png}
+    \column{0.2\textwidth}
+        \scriptsize \emph{show clip from Julien Seguinot using PISM}
+\end{columns}
 \end{frame}
 
 
