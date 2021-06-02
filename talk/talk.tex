@@ -84,17 +84,17 @@
 
 \vspace{-1mm}
 \begin{itemize}
-\item a non-shallow glacier interacting with the climate
+\item a glacier which is in balance with its climate
     \begin{itemize}
-    \item only the simplest such problem (nonsliding, isothermal)
+    \item the simplest such problem (grounded, nonsliding, isothermal)
     \item re~\emph{steady}: solve this and you can handle implicit steps too
     \end{itemize}
-\item data given on fixed $\Omega \subset \RR^2$:
+\item steady climate data given on fixed $\Omega \subset \RR^2$:
     \begin{itemize}
-    \item climatic mass balance $a(x,y)$ \hfill $\gets$ \emph{steady climate}
+    \item climatic mass balance $a(x,y)$ \hfill $\gets$ \emph{$a>0$ for snowing}
     \item bed elevation $b(x,y)$
     \end{itemize}
-\item determine: surface elevation $s(x,y)$ on $\Omega$ and domain $\Lambda_s \subset \RR^3$
+\item determine: surface elevation $s(x,y)$ on $\Omega$, domain $\Lambda_s \subset \RR^3$
 \end{itemize}
 \end{frame}
 
@@ -109,7 +109,11 @@ $$\bu|_s \cdot \bn_s + a=0$$
 \item $\bn_s = \left<-s_x,-s_y,1\right>$  \quad (normal to ice surface; upward)
 \item \emph{on} the ice surface, in steady-state there is balance (SKE) between motion and climatic mass balance
 \item \emph{off} the ice we know $a\le 0$ in steady state
-\item for all of this talk: $s=b$ where ice is not present
+\item for all of this talk:
+    \begin{itemize}
+    \item $s$ is assumed to be well-defined (no overhangs)
+    \item $s=b$ where ice is not present, so $s$ is defined on all of $\Omega$
+    \end{itemize}
 \end{itemize}
 \end{frame}
 
@@ -117,7 +121,7 @@ $$\bu|_s \cdot \bn_s + a=0$$
 \begin{frame}{SIGP strong form}
 
 \begin{itemize}
-\item \alert{a nonlinear complementarity problem (NCP) for $s$ coupled to Stokes problem for $\bu,p$:}
+\item the SIGP is a \alert{nonlinear complementarity problem (NCP) for $s$ which is coupled to a Stokes problem for $\bu,p$:}
 
 \vspace{-5mm}
 
@@ -201,7 +205,7 @@ over $W_0^{1,\pp}(\Lambda_s)^3 \times L^\qq(\Lambda_s)$ and extract trace $\bus$
 \begin{frame}{SIGP weak form is a variational inequality}
 
 \begin{itemize}
-\item using $\Phi$ gives clean NCP over $\Omega$:
+\item using $\Phi$ gives a cleaner NCP over $\Omega$:
 \begin{align*}
 s - b &\ge 0 \\
 - \Phi(s) - a &\ge 0 \\
@@ -209,12 +213,13 @@ s - b &\ge 0 \\
 \end{align*}
 
 \item well-known fact: \quad  NCP (strong form) $\leftrightarrow$ VI (weak form)
-\item find $s \in \mathcal{K} = \{r \ge b\}$ so that
-    $$\hspace{10mm} F(s)[r - s] \ge \ip{a}{r-s} \hspace{10mm} (\ast)$$
-for all $r \in \mathcal{K}$, where
-    $$F(s)[w] = - \int_\Omega \Phi(s)\, w \,dx dy$$
+\item VI weak form: find $s \in \mathcal{K} = \{r \ge b\}$ so that
+    $$\hspace{10mm} F(s)[r - s] \ge \ip{a}{r-s}$$
+for all $r \in \mathcal{K}$, where $F(s)[w] = - \int_\Omega \Phi(s)\, w \,dx dy$
+
+\medskip
     \begin{itemize}
-    \item whether VI problem $(\ast)$ is well-posed is open, but the SIA version has an existence proof (Jouvet \& Bueler \cite{JouvetBueler2012})
+    \item whether this VI is well-posed is open, but the SIA version has an existence proof (Jouvet \& Bueler \cite{JouvetBueler2012})
     \end{itemize}
 \end{itemize}
 
@@ -223,12 +228,12 @@ for all $r \in \mathcal{K}$, where
 
 \begin{frame}{goal: robust and optimal SIGP solver}
 
-\begin{block}{goal}
-given triangulation $\mathcal{T}$ of $\Omega$, and $P_1$ FE space $\mathcal{V}^h \subset W^{1,\qq}(\Omega)$, solve SIGP VI
+\begin{block}{numerical goal}
+Given triangulation $\mathcal{T}$ of $\Omega$ and $P_1$ space $\mathcal{V}^h \subset W^{1,\qq}(\Omega)$.  Solve VI
 
-$$F(s^h)[r^h - s^h] \ge \ip{a}{r^h-s^h}$$
+$$F(s^h)[r^h - s^h] \ge \ip{a}{r^h-s^h} \qquad \text{for all $r^h \in \mathcal{K}^h$}$$
 
-for admissible $s^h$ using solutions of Glen-Stokes problem $F_{\Lambda_{s^h}}(\bu^h,p^h)=0$ to evaluate $\Phi(s)=\bu|_s\cdot\bn_s$ and $F(s)[w] =- \int_\Omega \Phi(s)\, w $
+to give admissible $s^h \in \mathcal{K}^h$.  Use the solution of the Stokes problem $F_{\Lambda_{s^h}}(\bu^h,p^h)=0$ to evaluate $\Phi(s^h)=\bu|_{s^h}\cdot\bn_{s^h}$ (and thus $F(s^h)$).
 \end{block}
 
 \begin{itemize}
@@ -238,6 +243,7 @@ for admissible $s^h$ using solutions of Glen-Stokes problem $F_{\Lambda_{s^h}}(\
     \item \alert{optimal} over $m$ degrees of freedom in $\mathcal{V}^h$: work is $O(m)$
     \end{itemize}
 \item optimal requires multigrid
+\item<2> \emph{for now these are aspirations only, but let's give it a shot}
 \end{itemize}
 \end{frame}
 
