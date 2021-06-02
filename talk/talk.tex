@@ -8,6 +8,11 @@
 \usepackage{booktabs} % Required for better table rules
 \usepackage{bm,times}
 
+\usepackage{tikz}
+\usetikzlibrary{decorations.pathreplacing,calc}
+
+\newcommand{\tikzmark}[1]{\tikz[overlay,remember picture] \node (#1) {};}
+
 \newcommand{\eps}{\epsilon}
 \newcommand{\RR}{\mathbb{R}}
 
@@ -97,23 +102,31 @@
 \begin{frame}{SIGP strong form}
 
 \begin{itemize}
-\item \alert{a nonlinear complementarity problem (NCP) coupled to the Glen-Stokes model for ice velocity $\bu$:}
+\item \alert{a nonlinear complementarity problem (NCP) coupled to the Glen-Stokes model for $\bu,p$:}
 
-\vspace{-2mm}
+\vspace{-5mm}
+
 \begin{align*}
-s - b &\ge 0 && \text{on $\Omega$} \\
+s - b &\ge 0 && \text{on $\Omega$} & \tikzmark{first} \\
 - \bu|_s \cdot \bn_s - a &\ge 0 && \text{''} \\
-(s - b) (- \bu|_s \cdot \bn_s - a) &= 0 && \text{''} \\
+(s - b) (- \bu|_s \cdot \bn_s - a) &= 0 && \text{''} & \tikzmark{second} \\
 - \nabla \cdot \left(2 \nu_\eps\, D\bu\right) + \nabla p - \rhoi \mathbf{g} &= \bzero && \text{on $\Lambda_s$} \\
 \nabla \cdot \bu &= 0 && \text{''} \\
-\left(2 \nu_\eps D\bu - pI\right) \bn &= \bzero && \text{on $\partial \Lambda_s \setminus \Gamma_0$} \\
-\bu &= \bzero && \text{on $\Gamma_0$ (ice base)}
+\bu &= \bzero && \text{on $\Gamma_0$ \quad (ice base)} \\
+\left(2 \nu_\eps D\bu - pI\right) \bn &= \bzero && \text{on $\partial \Lambda_s \setminus \Gamma_0$}
 \end{align*}
 
+\begin{tikzpicture}[overlay, remember picture]
+\draw[decoration={brace,amplitude=0.4em},decorate,ultra thick] (first.north east) node[right=8mm,below=3mm] {NCP} -- (second.east);
+\end{tikzpicture}
+
+\vspace{-2mm}
+
     \begin{itemize}
+    \item $\bn_s = \left<-s_x,-s_y,1\right>$  \quad (normal to ice surface; upward)
+    \item surface kinematical equation holds \emph{on the ice}: \quad $\bu|_s \cdot \bn_s + a=0$
     \item Glen-law effective viscosity with $\text{p}=(1/\text{n})+1=4/3$:
       $$\nu_\eps = \frac{1}{2} B_n \left(|D\bu|^2 + \eps\, D_0^2\right)^{(\pp-2)/2}$$
-    \item surface kinematical equation holds \emph{on the ice}: \quad $\bu|_s \cdot \bn_s + a=0$
     \end{itemize}
 \end{itemize}
 \end{frame}
@@ -122,12 +135,10 @@ s - b &\ge 0 && \text{on $\Omega$} \\
 \begin{frame}{existing ice sheet models}
 
 \begin{itemize}
-\item almost no one is solving the SIGP directly, or implicit time-stepping
+\item almost no one is solving the SIGP directly, or doing implicit time-stepping
     \begin{itemize}
-    \item except Wirbel \& Jarosch \cite{WirbelJarosch2020} \dots nonscalable, ``fake ice''
-    \item optimal fixed-geometry Stokes solver (Isaac and others \cite{IsaacStadlerGhattas2015})
+    \item except Wirbel \& Jarosch \cite{WirbelJarosch2020} \dots nonscalable, w.~``fake ice''
     \end{itemize}
-%\item \emph{warning}: barrier to exact numerical mass conservation \cite{Bueler2021conservation}
 \item what are people doing?
     \begin{itemize}
     \item \alert{explicit time-stepping with $s \ge b$ enforced by truncation} (below)
@@ -139,8 +150,25 @@ s - b &\ge 0 && \text{on $\Omega$} \\
     \column{0.8\textwidth}
         \hfill \includegraphics[width=0.8\textwidth]{figs/seguinot.png}
     \column{0.2\textwidth}
-        \scriptsize \emph{show clip from Julien Seguinot using PISM}
+        \scriptsize \emph{show clip of PISM run by Julien Seguinot}
 \end{columns}
+\end{frame}
+
+
+\begin{frame}{goals}
+
+\begin{itemize}
+\item FIXME
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}{ice dynamics operator}
+
+\begin{itemize}
+\item FIXME
+\item optimal fixed-geometry Stokes solver exists (Isaac et al \cite{IsaacStadlerGhattas2015})
+\end{itemize}
 \end{frame}
 
 
@@ -152,6 +180,9 @@ s - b &\ge 0 && \text{on $\Omega$} \\
 \end{frame}
 
 
+\begin{frame}{extra}
+ NCP is a barrier to exact numerical mass conservation \cite{Bueler2021conservation}
+\end{frame}
 
 %\begin{block}{Block}
 %\begin{alertblock}{Alert block}
@@ -172,8 +203,24 @@ s - b &\ge 0 && \text{on $\Omega$} \\
 \appendix
 
 \begin{frame}{References}
-	\bibliography{../paper/msg.bib}
-	\bibliographystyle{plain}
+
+%\bibliography{../paper/msg.bib}
+%\bibliographystyle{plain}
+
+\begin{thebibliography}{1}
+\bibitem{Bueler2021conservation}
+E.~Bueler. \textbf{Conservation laws for free-boundary fluid layers.} {\em SIAM J. Appl. Math.}, to appear.
+
+\bibitem{BuelerMitchell2022}
+E.~Bueler and L.~Mitchell. \textbf{Multilevel computation of glacier geometry from Stokes dynamics.} in preparation
+
+\bibitem{IsaacStadlerGhattas2015}
+T.~Isaac, G.~Stadler, and O.~Ghattas.  \textbf{Solution of nonlinear Stokes equations discretized by high-order finite elements on nonconforming and anisotropic meshes, with application to ice sheet dynamics.} {\em SIAM J. Sci. Comput.}, 37(6):B804--B833, 2015.
+
+\bibitem{WirbelJarosch2020}
+A.~Wirbel and A.~H. Jarosch. \textbf{Inequality-constrained free-surface evolution in a full {S}tokes ice flow model (\textit{evolve\_glacier v1.1}).} {\em Geoscientific Model Development}, 13(12):6425--6445, 2020.
+\end{thebibliography}
+
 \end{frame}
 
 
