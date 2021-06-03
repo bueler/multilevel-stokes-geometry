@@ -128,38 +128,31 @@ class SmootherStokes(SmootherObstacleProblem):
         u *= sc
         return u, p
 
-    def residual(self, mesh1d, s, ella):
-        '''Compute the residual functional, namely the surface kinematical
-        residual for the entire domain, for a given iterate s.  In symbols
-        matching the paper, returns  r = F(s)[.] - ella(.)  where . ranges over
-        hat functions on mesh1d.  Note mesh1D is
-        a MeshLevel1D instance and ella(.) = <a(x),.> is a source term in V^j'.
-        This residual evaluation requires setting up an (x,z) Firedrake mesh
-        by extrusion of a (stored) base mesh.  The icy
-        columns get their height from s, with minimum height args.Hmin.  By
-        default the extruded mesh has empty (0-element) columns if ice-free
-        according to s.  If args.padding==True then the whole extruded mesh has
-        the same layer count.  If saveupname is a string then the Stokes
-        solution (u,p) is saved to that file.  The returned residual array is
-        defined on mesh1d and is in the dual space V^j'.'''
+    def createbasemesh(self, mesh1d):
+        '''Create a Firedrake interval base mesh matching mesh1d.
+        Also store the bed elevation.'''
+        self.mx = mesh1d.m + 1
+        self.basemesh = fd.IntervalMesh(self.mx, length_or_left=0.0,
+                                        right=mesh1d.xmax)
+        self.b = self.phi(mesh1d.xx())
 
-        # if needed, generate self.basemesh from mesh1d
-        firstcall = (self.basemesh == None)
-        if firstcall:
-            self.mx = mesh1d.m + 1
+    def extrudemesh(self, s, report=False):
+        '''Generate extruded mesh over self.basemesh, to height s.
+        The icy columns get their height from s, with minimum height
+        args.Hmin.  By default the extruded mesh has empty (0-element) columns
+        if ice-free according to s.  If args.padding==True then the whole
+        extruded mesh has the same layer count.'''
+        assert self.basemesh is not None
+        if report:
             print('mesh: base of %d elements (intervals)' \
                   % self.mx)
-            self.basemesh = fd.IntervalMesh(self.mx, length_or_left=0.0,
-                                            right=mesh1d.xmax)
-            self.b = self.phi(mesh1d.xx())
-
-        # extrude the mesh, to temporary total height 1.0
+        # extrude to temporary total height 1.0
         mz = self.args.mz
         if self.args.padding:
             assert self.args.Hmin > 0.0, \
                 'padding requires minimum positive thickness'
             mesh = fd.ExtrudedMesh(self.basemesh, mz, layer_height=1.0 / mz)
-            if firstcall:
+            if report:
                 print('      extruded is padded, has %d x %d elements' \
                       % (self.mx, mz))
         else:
@@ -171,7 +164,7 @@ class SmootherStokes(SmootherObstacleProblem):
             # FIXME: in parallel we must provide local, haloed layermap
             mesh = fd.ExtrudedMesh(self.basemesh, layers=layermap,
                                    layer_height=1.0 / mz)
-            if firstcall:
+            if report:
                 icycount = sum(icyelement)
                 print('      extruded has %d x %d icy elements and %d ice-free base elements' \
                       % (icycount, mz, self.mx - icycount))
@@ -184,49 +177,70 @@ class SmootherStokes(SmootherObstacleProblem):
         xxzz = fd.as_vector([x, extend(mesh, sbase) * z])
         coords = fd.Function(mesh.coordinates.function_space())
         mesh.coordinates.assign(coords.interpolate(xxzz))
+        return mesh
 
+    def extracttop(self, mesh1d, mesh, field):
+        '''Loop over base mesh, finding top cells where ice is present,
+        then top nodes, and evaluate the field there.  Only works for
+        Q1 fields.  (Thanks Lawrence Mitchell.)'''
+        assert self.basemesh is not None
+        # get the cells from basemesh and mesh
+        bmP1 = fd.FunctionSpace(self.basemesh, 'Lagrange', 1)
+        bmcnm = bmP1.cell_node_map().values
+        Q1 = fd.FunctionSpace(mesh, 'Lagrange', 1)
+        cnm = Q1.cell_node_map().values
+        coff = Q1.cell_node_map().offset  # node offset in column
+        # get the cell-wise indexing scheme
+        section, iset, facets = Q1.cell_boundary_masks
+        # facets ordered with sides first, then bottom, then top
+        off = section.getOffset(facets[-1])
+        dof = section.getDof(facets[-1])
+        topind = iset[off:off+dof]  # nodes on top of a cell
+        assert len(topind) == 2
+        # loop over base mesh cells computing top-node field value
+        f = mesh1d.zeros()
+        for cell in range(self.basemesh.cell_set.size):
+            start, extent = mesh.cell_set.layers_array[cell]
+            ncell = extent - start - 1
+            if ncell == 0:
+                continue  # leave r unchanged for these base mesh nodes
+            topcellnodes = cnm[cell, ...] + coff * ncell - 1
+            f_all = field.dat.data_ro[topcellnodes] # at ALL nodes in top cell
+            f[bmcnm[cell,...]] = f_all[topind]
+        return f
+
+    def residual(self, mesh1d, s, ella):
+        '''Compute the residual functional, namely the surface kinematical
+        residual for the entire domain, for a given iterate s.  In symbols
+        matching the paper, returns  r = F(s)[.] - ella(.)  where . ranges over
+        hat functions on mesh1d.  Note mesh1D is a MeshLevel1D instance and
+        ella(.) = <a(x),.> in V^j' is the CMB.  This residual evaluation
+        calls extrudemesh() to set up an (x,z) Firedrake mesh by extrusion of a
+        (stored) base mesh.  If saveupname is a string then the Stokes
+        solution (u,p) is saved to that file.  The returned residual array is
+        defined on mesh1d and is in the dual space V^j'.'''
+        firstcall = (self.basemesh == None)
+        if firstcall: # if needed, generate self.basemesh from mesh1d
+            self.createbasemesh(mesh1d)
         # solve the Glen-Stokes problem on the extruded mesh
+        mesh = self.extrudemesh(s, report=firstcall)
         u, p = self.solvestokes(mesh, printsizes=firstcall)
-
-        # evaluate kinematic part of surface residual, but onto (x,z) mesh
-        # note surface normal direction is n_s = <-s_x,1>
-        kres_ufl = + u[0] * z.dx(0) - u[1]  # = u ds/dx - w
+        # evaluate kinematic part of surface residual on the extruded mesh
+        _, z = fd.SpatialCoordinate(mesh)
+        kres_ufl = u[0] * z.dx(0) - u[1]  #  - u|_s . n_s = u ds/dx - w
         Q1 = fd.FunctionSpace(mesh, 'Lagrange', 1)
         kres = fd.Function(Q1).interpolate(kres_ufl)
         if self.saveflag:
             self.savestate(mesh, u, p, kres)
-
-        # return surface residual vector on z = s(x):   r = u ds/dx - w - a
+        # return surface residual vector on z = s(x):   r = - u|_s . n_s - a
         if self.args.padding:
             # in this case the 'top' BC nodes are all we need
             topbc = fd.DirichletBC(Q1, 1.0, 'top')
-            return mesh1d.ellf(kres.dat.data_ro[topbc.nodes]) - ella
+            r = kres.dat.data_ro[topbc.nodes]
         else:
-            # loop over base mesh, finding top cells where ice is present,
-            #   then top nodes, to evaluate r
-            bmP1 = fd.FunctionSpace(self.basemesh, 'Lagrange', 1)  # P1
-            bmcnm = bmP1.cell_node_map().values
-            cnm = Q1.cell_node_map().values
-            coff = Q1.cell_node_map().offset  # node offset in column
-            # get the cell-wise indexing scheme
-            section, iset, facets = Q1.cell_boundary_masks
-            # facets ordered with sides first, then bottom, then top
-            off = section.getOffset(facets[-1])
-            dof = section.getDof(facets[-1])
-            topind = iset[off:off+dof]  # nodes on top of a cell
-            assert len(topind) == 2
-            # loop over base mesh cells computing top-node r value
-            r = mesh1d.zeros()
-            for cell in range(self.basemesh.cell_set.size):
-                start, extent = mesh.cell_set.layers_array[cell]
-                ncell = extent - start - 1
-                if ncell == 0:
-                    continue  # leave r unchanged for these base mesh nodes
-                topcellnodes = cnm[cell, ...] + coff * ncell - 1
-                kr = kres.dat.data_ro[topcellnodes] # at ALL nodes in top cell
-                r[bmcnm[cell,...]] = kr[topind]
-            # finally include the climatic mass balance
-            return mesh1d.ellf(r) - ella
+            r = self.extracttop(mesh1d, mesh, kres)
+        # finally include the climatic mass balance
+        return mesh1d.ellf(r) - ella
 
     def smoothersweep(self, mesh1d, s, ella, phi, currentr=None):
         '''Do in-place smoothing on s(x).  On input, set currentr to a vector
