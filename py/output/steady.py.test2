@@ -1,9 +1,7 @@
-residual(): base mesh of 8 elements (intervals)
-            extruded mesh: 6 x 4 icy elements (2 ice-free base elements)
+mesh: base of 8 elements (intervals)
+      extruded has 6 x 4 icy elements and 2 ice-free base elements
             sizes: n_u = 242, n_p = 37
-0: 6.3623e+00
-    jacobislow negd = []
-1: 4.3448e+00
-    jacobislow negd = []
-2: 1.1124e+00
-smoother iteration CONVERGED by -irtol
+   0: 6.3623e+00
+   1: 4.3448e+00
+   2: 1.1124e+00
+iteration CONVERGED at step 2 by F<(2.00e-01)F0

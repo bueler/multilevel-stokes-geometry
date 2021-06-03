@@ -66,6 +66,8 @@ adda('-jcoarse', type=int, default=0, metavar='J',
      help='coarse mesh is jth level (default jcoarse=0 gives 1 node)')
 adda('-J', type=int, default=3, metavar='J',
      help='fine mesh is Jth level (default J=%(default)s)')
+adda('-monitor', action='store_true', default=False,
+     help='show CP residual norm at each step')
 adda('-mz', type=int, default=4, metavar='MZ',
      help='number of (x,z) extruded mesh levels (default=%(default)s)')
 adda('-o', metavar='FILEROOT', type=str, default='',
@@ -145,16 +147,19 @@ if args.sweepsonly:
         obsprob.savestatenextresidual(args.o + '_0.pvd')
     r = obsprob.residual(mesh, s, ellf)
     normF0 = obsprob.inactiveresidualnorm(mesh, s, r, b)
-    print('0: %.4e' % normF0)
+    if args.monitor:
+        print('   0: %.4e' % normF0)
     for j in range(args.cyclemax):
         r = obsprob.smoothersweep(mesh, s, ellf, b, currentr=r)
         normF = obsprob.inactiveresidualnorm(mesh, s, r, b)
-        print('%d: %.4e' % (j+1, normF))
+        if args.monitor:
+            print('%4d: %.4e' % (j+1, normF))
         if normF < args.irtol * normF0:
-            print('smoother iteration CONVERGED by -irtol')
+            print('iteration CONVERGED at step %d by F<(%.2e)F0' \
+                  % (j+1, args.irtol))
             break
         elif normF > 100.0 * normF0:
-            print('smoother iteration DIVERGED detected')
+            print('iteration DIVERGED by F>100F0 at step %d' % (j+1))
             break
     if args.o:
         obsprob.savestatenextresidual(args.o + '_%d.pvd' % (j+1))

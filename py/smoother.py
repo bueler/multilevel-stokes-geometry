@@ -147,7 +147,7 @@ class SmootherStokes(SmootherObstacleProblem):
         firstcall = (self.basemesh == None)
         if firstcall:
             self.mx = mesh1d.m + 1
-            print('residual(): base mesh of %d elements (intervals)' \
+            print('mesh: base of %d elements (intervals)' \
                   % self.mx)
             self.basemesh = fd.IntervalMesh(self.mx, length_or_left=0.0,
                                             right=mesh1d.xmax)
@@ -160,7 +160,7 @@ class SmootherStokes(SmootherObstacleProblem):
                 'padding requires minimum positive thickness'
             mesh = fd.ExtrudedMesh(self.basemesh, mz, layer_height=1.0 / mz)
             if firstcall:
-                print('            extruded mesh: padded, %d x %d elements' \
+                print('      extruded is padded, has %d x %d elements' \
                       % (self.mx, mz))
         else:
             layermap = np.zeros((self.mx, 2), dtype=int)  # [[0,0], ..., [0,0]]
@@ -173,7 +173,7 @@ class SmootherStokes(SmootherObstacleProblem):
                                    layer_height=1.0 / mz)
             if firstcall:
                 icycount = sum(icyelement)
-                print('            extruded mesh: %d x %d icy elements (%d ice-free base elements)' \
+                print('      extruded has %d x %d icy elements and %d ice-free base elements' \
                       % (icycount, mz, self.mx - icycount))
 
         # generate extruded mesh of height s(x)
@@ -238,12 +238,15 @@ class SmootherStokes(SmootherObstacleProblem):
         if currentr is None:
             currentr = self.residual(mesh1d, s, ella)
         if self.args.smoother == 'richardson':
-            self.richardsonsweep(s, phi, currentr)
+            negd = self.richardsonsweep(s, phi, currentr)
         elif self.args.smoother == 'jacobislow':
-            self.jacobislowsweep(mesh1d, s, ella, phi, currentr)
+            negd = self.jacobislowsweep(mesh1d, s, ella, phi, currentr)
         elif self.args.smoother == 'gsslow':
-            self.gsslowsweep(mesh1d, s, ella, phi, currentr)
+            negd = self.gsslowsweep(mesh1d, s, ella, phi, currentr)
         mesh1d.WU += 1
+        if self.args.monitor and len(negd) > 0:
+            print('      negative diagonal entries: ', end='')
+            print(negd)
         return self.residual(mesh1d, s, ella)
 
     def richardsonsweep(self, s, phi, r):
@@ -252,6 +255,7 @@ class SmootherStokes(SmootherObstacleProblem):
         User must adjust omega to reasonable level.  (Do this with SIA-type
         stability criterion argument.)'''
         np.maximum(s - self.args.omega * r, phi, s)
+        return []
 
     def jacobislowsweep(self, mesh1d, s, ella, phi, r,
                         eps=1.0, dump=False):
@@ -277,9 +281,8 @@ class SmootherStokes(SmootherObstacleProblem):
             else:
                 snew[j] = phi[j]
                 negd.append(j)
-        print('    jacobislow negd = ', end='')
-        print(negd)
         s[:] = snew[:] # in-place copy
+        return negd
 
     def gsslowsweep(self, mesh1d, s, ella, phi, r,
                     eps=1.0, dump=False):
@@ -305,8 +308,7 @@ class SmootherStokes(SmootherObstacleProblem):
                 negd.append(j)
             # must recompute residual for s (nonlocal!)
             r = self.residual(mesh1d, s, ella)
-        print('    gsslow negd = ', end='')
-        print(negd)
+        return negd
 
     def phi(self, x):
         '''For now we have a flat bed.'''
