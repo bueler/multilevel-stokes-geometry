@@ -1,6 +1,6 @@
 mesh: base of 16 elements (intervals)
       extruded has 12 x 2 icy elements and 4 ice-free base elements
-            sizes: n_u = 266, n_p = 43
+      dimensions n_u = 266, n_p = 43
    0: 3.1990e+00
       negative diagonal entries: [1]
    1: 3.2941e+00

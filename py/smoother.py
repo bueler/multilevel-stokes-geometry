@@ -96,7 +96,7 @@ class SmootherStokes(SmootherObstacleProblem):
         V = fd.VectorFunctionSpace(mesh, 'Lagrange', 2)
         W = fd.FunctionSpace(mesh, 'Lagrange', 1)
         if printsizes:
-            print('            sizes: n_u = %d, n_p = %d' % (V.dim(), W.dim()))
+            print('      dimensions n_u = %d, n_p = %d' % (V.dim(), W.dim()))
         Z = V * W
         up = fd.Function(Z)
         scu, p = fd.split(up)       # scaled velocity, unscaled pressure
