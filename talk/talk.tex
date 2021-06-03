@@ -1,5 +1,4 @@
-
-\documentclass{beamer}
+\documentclass[usepdftitle=false]{beamer}
 
 \usetheme{focus} % see https://github.com/elauksap/focus-beamertheme
 % Add option [numbering=none] to disable the footer progress bar
@@ -10,6 +9,11 @@
 
 \usepackage{tikz}
 \usetikzlibrary{decorations.pathreplacing,calc}
+
+\usepackage{hyperref}
+\hypersetup{
+    pdftitle={Evolution of ice sheet geometry using Stokes dynamics}
+}
 
 \newcommand{\tikzmark}[1]{\tikz[overlay,remember picture] \node (#1) {};}
 
@@ -89,7 +93,7 @@
     \item the simplest such problem (grounded, nonsliding, isothermal)
     \item re~\emph{steady}: solve this and you can handle implicit steps too
     \end{itemize}
-\item steady climate data given on fixed $\Omega \subset \RR^2$:
+\item steady data given on fixed $\Omega \subset \RR^2$:
     \begin{itemize}
     \item climatic mass balance $a(x,y)$ \hfill $\gets$ \emph{$a>0$ for snowing}
     \item bed elevation $b(x,y)$
@@ -101,27 +105,38 @@
 
 \begin{frame}{surface kinematical equation}
 
-\begin{block}{steady surface kinematical equation (SKE)}
-$$\bu|_s \cdot \bn_s + a=0$$
-\end{block}
-
 \begin{itemize}
-\item $\bn_s = \left<-s_x,-s_y,1\right>$  \quad (normal to ice surface; upward)
-\item \emph{on} the ice surface, in steady-state there is balance (SKE) between motion and climatic mass balance
-\item \emph{off} the ice we know $a\le 0$ in steady state
-\item for all of this talk:
+\item glaciers flow, so there is an equation for the surface elevation
+\item the surface kinematical equation (SKE) holds \emph{on} the ice
+    $$\bu|_s \cdot \bn_s + a=0 \qquad \text{\emph{steady state}}$$
+
     \begin{itemize}
-    \item $s$ is assumed to be well-defined (no overhangs)
-    \item $s=b$ where ice is not present, so $s$ is defined on all of $\Omega$
+    \item $\bn_s = \left<-s_x,-s_y,1\right>$  \, is an upward normal to the ice surface
     \end{itemize}
+\item \emph{off} the ice we know $a\le 0$ in steady state
 \end{itemize}
+
+\bigskip
+\begin{columns}
+    \column{0.6\textwidth}
+        \begin{itemize}
+        \item for all of this talk:
+            \begin{itemize}
+            \item $s$ is assumed to be well-defined (no overhangs)
+            \item $s=b$ where ice is not present, so $s$ is defined on all of $\Omega$
+            \end{itemize}
+        \end{itemize}
+    \column{0.4\textwidth}
+        \includegraphics[width=1.05\textwidth]{figs/simpledomain.png}
+\end{columns}
 \end{frame}
 
 
 \begin{frame}{SIGP strong form}
 
 \begin{itemize}
-\item the SIGP is a \alert{nonlinear complementarity problem (NCP) for $s$ which is coupled to a Stokes problem for $\bu,p$:}
+\item the SIGP free-boundary problem determines $s$ on $\Omega$
+\item it is a \alert{nonlinear complementarity problem (NCP) for $s$ which is coupled to a Stokes problem for $\bu,p$:}
 
 \vspace{-5mm}
 
@@ -148,8 +163,8 @@ s - b &\ge 0 && \text{on $\Omega$} & \tikzmark{ncptop} \\
     \begin{itemize}
     \item plus Glen-law effective viscosity with $\text{p}=(1/\text{n})+1(=4/3)$:
       $$\nu_\eps = \frac{1}{2} B_n \left(|D\bu|^2 + \eps\, D_0^2\right)^{(\pp-2)/2}$$
+    \item \emph{count the 3 nonlinearities}
     \end{itemize}
-\item SIGP is a free-boundary problem for $s$ defined on $\Omega$
 \end{itemize}
 \end{frame}
 
@@ -157,13 +172,15 @@ s - b &\ge 0 && \text{on $\Omega$} & \tikzmark{ncptop} \\
 \begin{frame}{existing ice sheet models}
 
 \begin{itemize}
-\item almost no one is solving the SIGP directly, or doing implicit time-stepping
+\item almost no one is solving the SIGP directly
     \begin{itemize}
-    \item except Wirbel \& Jarosch \cite{WirbelJarosch2020} \dots nonscalable, w.~``fake ice''
+    \item or doing implicit time-stepping (\emph{basically the same as SIGP})
+    \item except Wirbel \& Jarosch \cite{WirbelJarosch2020} (\emph{semi-coupled, nonscalable, artificial ice layer})
     \end{itemize}
 \item what are people doing instead?
     \begin{itemize}
-    \item \alert{explicit time-stepping with $s \ge b$ enforced by truncation} (below)
+    \item \alert{explicit time-stepping with $s \ge b$ enforced by truncation}
+    \item mostly with shallow approximations, e.g.~PISM run below
     \end{itemize}
 \end{itemize}
 
@@ -172,14 +189,14 @@ s - b &\ge 0 && \text{on $\Omega$} & \tikzmark{ncptop} \\
     \column{0.8\textwidth}
         \hfill \includegraphics[width=0.8\textwidth]{figs/seguinot.png}
     \column{0.2\textwidth}
-        \scriptsize \emph{show clip of PISM run by Julien Seguinot}
+        \scriptsize \emph{show clip of Alpine run by Julien Seguinot}
 \end{columns}
 \end{frame}
 
 
 \begin{frame}{coupling via operator}
 
-\begin{block}{ice dynamics operator}
+\begin{block}{definition: ice dynamics operator}
 $\Phi : s \mapsto \bus \cdot \bn_s$
 
 \vspace{-3mm}
@@ -188,15 +205,14 @@ $\Phi : s \mapsto \bus \cdot \bn_s$
 \end{block}
 
 \begin{itemize}
-\item to compute $\Phi(s)$, solve Stokes (weak form) problem
+\item to compute $\Phi(s)$: build $\Lambda_s$, solve weak-form Stokes problem
     $$F_{\Lambda_s}(\bu,p)[\bv,q] = \int_{\Lambda_s} 2 \nu_\eps D\bu : D\bv - p \Div\bv - (\Div\bu) q - \rhoi \bg \cdot \bv\,d\bx = 0$$
-over $W_0^{1,\pp}(\Lambda_s)^3 \times L^\qq(\Lambda_s)$ and extract trace $\bus$
 
-\medskip
     \begin{itemize}
-    \item optimal solver already exists for this problem (Isaac et al \cite{IsaacStadlerGhattas2015})
+    \item well-posed over $W_0^{1,\pp}(\Lambda_s)^3 \times L^\qq(\Lambda_s)$ (Jouvet \& Rappaz \cite{JouvetRappaz2011})
+    \item optimal solver exists (Isaac et al \cite{IsaacStadlerGhattas2015})
+    \item extract trace $\bus$, then $\Phi(s) = \bus \cdot \bn_s$, extend by zero to all of $\Omega$
     \end{itemize}
-\item extend by zero so $\Phi(s)$ is defined on all of $\Omega$
 \end{itemize}
 
 \end{frame}
@@ -212,15 +228,19 @@ s - b &\ge 0 \\
 (s - b) (- \Phi(s) - a) &= 0
 \end{align*}
 
-\item well-known fact: \quad  NCP (strong form) $\leftrightarrow$ VI (weak form)
-\item VI weak form: find $s \in \mathcal{K} = \{r \ge b\}$ so that
+\item NCP (strong form) $\leftrightarrow$ VI (weak form)
+
+\begin{block}{SIGP weak form}
+find admissible $s \in \mathcal{K} = \{r \ge b\} \subset W^{1,\qq}(\Omega)$ so that
     $$\hspace{10mm} F(s)[r - s] \ge \ip{a}{r-s}$$
 for all $r \in \mathcal{K}$, where $F(s)[w] = - \int_\Omega \Phi(s)\, w \,dx dy$
+\end{block}
 
-\medskip
+\item well-posedness is open
     \begin{itemize}
-    \item whether this VI is well-posed is open, but the SIA version has an existence proof (Jouvet \& Bueler \cite{JouvetBueler2012})
+    \item existence holds for SIA version (Jouvet \& Bueler \cite{JouvetBueler2012})
     \end{itemize}
+
 \end{itemize}
 
 \end{frame}
@@ -229,11 +249,9 @@ for all $r \in \mathcal{K}$, where $F(s)[w] = - \int_\Omega \Phi(s)\, w \,dx dy$
 \begin{frame}{goal: robust and optimal SIGP solver}
 
 \begin{block}{numerical goal}
-Given triangulation $\mathcal{T}$ of $\Omega$ and $P_1$ space $\mathcal{V}^h \subset W^{1,\qq}(\Omega)$.  Solve VI
+Given triangulation $\mathcal{T}$ of $\Omega$ and $P_1$ space $\mathcal{V}^h \subset W^{1,\qq}(\Omega)$.  Use the numerical solution of the Stokes problem $F_{\Lambda_{s^h}}(\bu^h,p^h)=0$ to evaluate $\Phi(s^h)=\bu|_{s^h}\cdot\bn_{s^h}$.  Solve VI for $s^h \in \mathcal{K}^h$:
 
 $$F(s^h)[r^h - s^h] \ge \ip{a}{r^h-s^h} \qquad \text{for all $r^h \in \mathcal{K}^h$}$$
-
-to give admissible $s^h \in \mathcal{K}^h$.  Use the solution of the Stokes problem $F_{\Lambda_{s^h}}(\bu^h,p^h)=0$ to evaluate $\Phi(s^h)=\bu|_{s^h}\cdot\bn_{s^h}$ (and thus $F(s^h)$).
 \end{block}
 
 \begin{itemize}
@@ -241,26 +259,49 @@ to give admissible $s^h \in \mathcal{K}^h$.  Use the solution of the Stokes prob
     \begin{itemize}
     \item \alert{robust}
     \item \alert{optimal} over $m$ degrees of freedom in $\mathcal{V}^h$: work is $O(m)$
+        \begin{itemize}
+        \item[{\color{black} $\circ$}] optimal requires multigrid
+        \end{itemize}
+    \item<2> \emph{for now these are aspirations \dots}
     \end{itemize}
-\item optimal requires multigrid
-\item<2> \emph{for now these are aspirations only, but let's give it a shot}
 \end{itemize}
 \end{frame}
 
 
-\begin{frame}{new method}
+
+\begin{frame}{what thing is $\Phi$?}
+
+\begin{block}{SIGP weak form}
+find $s \in \mathcal{K}$ so $F(s)[r - s] \ge \ip{a}{r-s}$ for all $r \in \mathcal{K}$
+\end{block}
+
+\begin{itemize}
+\item $F(s)[w] = - \int_\Omega \Phi(s)\, w$ is basically dual of $\Phi(s)=\bus\cdot\bn_s$
+\item $\Phi : \mathcal{K} \subset W^{1,\qq}(\Omega) \to W^{-1,\pp}(\Omega)$
+\item the Stokes stress balance is nonlocal so $\Phi$ is ``dense''
+    \begin{itemize}
+    \item some kind of integral operator (\emph{convolve with Stokeslets})
+    \item $\Phi$ is concentrated near the diagonal, i.e.~short range
+    \end{itemize}
+\item yet it is a differential operator in the SIA case:
+\small
+    $$\Phi_{\text{SIA}}(s) = \frac{\gamma}{\qq} (s-b)^{\qq} |\grad_2 s|^{\qq} + \grad_2 \cdot\left[\frac{\gamma}{\qq+1} (s-b)^{\qq+1} |\grad_2 s|^{\qq-2} \grad_2 s\right]$$
+\normalsize
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}{multilevel constraint decomposition}
 
 \begin{itemize}
 \item FIXME \cite{BuelerMitchell2022}
 \end{itemize}
 
 \includegraphics[width=0.8\textwidth]{figs/extruded.png}
+
+\input{tikz/vcycle.tex}
 \end{frame}
 
-
-\begin{frame}{extra}
- NCP is a barrier to exact numerical mass conservation \cite{Bueler2021conservation}
-\end{frame}
 
 %\begin{block}{Block}
 %\begin{alertblock}{Alert block}
@@ -281,28 +322,29 @@ to give admissible $s^h \in \mathcal{K}^h$.  Use the solution of the Stokes prob
 \appendix
 
 \begin{frame}{References}
-
 %\bibliography{../paper/msg.bib}
 %\bibliographystyle{plain}
 
 \begin{thebibliography}{1}
-\bibitem{Bueler2021conservation}
-E.~Bueler. \textbf{Conservation laws for free-boundary fluid layers.} {\em SIAM J. Appl. Math.}, to appear.
-
 \bibitem{BuelerMitchell2022}
 E.~Bueler and L.~Mitchell. \textbf{Multilevel computation of glacier geometry from Stokes dynamics.} in preparation
 
 \bibitem{IsaacStadlerGhattas2015}
-T.~Isaac, G.~Stadler, and O.~Ghattas.  \textbf{Solution of nonlinear Stokes equations discretized by high-order finite elements on nonconforming and anisotropic meshes, with application to ice sheet dynamics.} {\em SIAM J. Sci. Comput.}, 37(6):B804--B833, 2015.
+T.~Isaac, G.~Stadler, and O.~Ghattas.  \textbf{Solution of nonlinear Stokes equations \dots with application to ice sheet dynamics.} {\em SIAM J. Sci. Comput.}, 37(6):B804--B833, 2015.
 
 \bibitem{JouvetBueler2012}
 G.~Jouvet and E.~Bueler. \textbf{Steady, shallow ice sheets as obstacle problems: well-posedness and finite element approximation.} {\em SIAM J. Appl. Math.}, 72(4):1292--1314, 2012.
 
-\bibitem{WirbelJarosch2020}
-A.~Wirbel and A.~H. Jarosch. \textbf{Inequality-constrained free-surface evolution in a full {S}tokes ice flow model (\textit{evolve\_glacier v1.1}).} {\em Geoscientific Model Development}, 13(12):6425--6445, 2020.
-\end{thebibliography}
+\bibitem{JouvetRappaz2011}
+G.~Jouvet and J.~Rappaz. \textbf{Analysis and finite element approximation of a nonlinear stationary Stokes problem arising in glaciology.} {\em Adv. Numer. Anal.}, 2011.
 
+\bibitem{WirbelJarosch2020}
+A.~Wirbel and A.~H. Jarosch. \textbf{Inequality-constrained free-surface evolution in a full {S}tokes ice flow model \dots} {\em Geosci. Model Dev.}, 13(12):6425--6445, 2020.
+\end{thebibliography}
 \end{frame}
 
+\begin{frame}{extra}
 
+NCP is a barrier to exact numerical mass conservation\footnote{E.~Bueler. \textbf{Conservation laws for free-boundary fluid layers.} \em{SIAM J.~Appl.~Math.}, to appear.}
+\end{frame}
 \end{document}
