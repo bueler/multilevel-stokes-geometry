@@ -82,7 +82,7 @@ class SmootherStokes(SmootherObstacleProblem):
         u.rename('velocity (m a-1)')
         p /= 1.0e5
         p.rename('pressure (bar)')
-        kres.rename('kinetic residual (a=0)')
+        kres.rename('kinematic residual (a=0)')
         print('saving u,p,nu,tau,kres to %s' % self.savename)
         fd.File(self.savename).write(u,p,nu,tau,kres)
         self.saveflag = False
@@ -210,6 +210,17 @@ class SmootherStokes(SmootherObstacleProblem):
             f[bmcnm[cell,...]] = f_all[topind]
         return f
 
+    def kinematical(self, mesh, u):
+        ''' Evaluate kinematic part of residual from given velocity u, namely
+        as a field defined on the whole extruded mesh:
+            kres = u ds/dx - w.
+        Note n_s = <-s_x, 1> so this is <u,w> . n_s.'''
+        _, z = fd.SpatialCoordinate(mesh)
+        kres_ufl = u[0] * z.dx(0) - u[1]
+        Q1 = fd.FunctionSpace(mesh, 'Lagrange', 1)
+        kres = fd.Function(Q1).interpolate(kres_ufl)
+        return kres
+
     def residual(self, mesh1d, s, ella):
         '''Compute the residual functional, namely the surface kinematical
         residual for the entire domain, for a given iterate s.  In symbols
@@ -226,11 +237,8 @@ class SmootherStokes(SmootherObstacleProblem):
         # solve the Glen-Stokes problem on the extruded mesh
         mesh = self.extrudetogeometry(s, report=firstcall)
         u, p = self.solvestokes(mesh, printsizes=firstcall)
-        # evaluate kinematic part of residual  (note - u|_s . n_s = u ds/dx - w)
-        _, z = fd.SpatialCoordinate(mesh)
-        kres_ufl = u[0] * z.dx(0) - u[1]
-        Q1 = fd.FunctionSpace(mesh, 'Lagrange', 1)
-        kres = fd.Function(Q1).interpolate(kres_ufl)
+        # get kinematical part of residual
+        kres = self.kinematical(mesh, u)
         if self.saveflag:
             self.savestate(mesh, u, p, kres)
         # get kinematic residual r = - u|_s . n_s on z = s(x)
@@ -245,27 +253,30 @@ class SmootherStokes(SmootherObstacleProblem):
         return mesh1d.ellf(r) - ella
 
     def viewperturb(self, s, klist, eps=1.0):
-        '''For given s(x), compute velocity and pressure perturbations
-        from perturbation s[k] + eps, i.e. lifting surface by eps, at an
-        each interior node k in klist.  Saves to file self.savename, which
-        needs to be a .pvd file.'''
+        '''For given s(x), compute solution perturbations from s[k] + eps,
+        i.e. lifting surface by eps, at an each icy interior node in klist.
+        Saves du,dp,dres to file self.savename, a .pvd file.'''
         assert self.basemesh is not None
-        for k in klist:
-            assert 1 <= k <= len(s)-2  # only valid at interior nodes
         assert self.savename is not None
         assert len(self.savename) > 0
         # solve the Glen-Stokes problem on the unperturbed extruded mesh
         meshs = self.extrudetogeometry(s)
         us, ps = self.solvestokes(meshs)
+        kress = self.kinematical(meshs, us)
         # solve on the PERTURBED extruded mesh
         sP = s.copy()
         for k in klist:
-            if s[k] > self.b[k] + 0.001:
+            if k < 1 or k > len(s)-2:
+                print('WARNING viewperturb(): skipping non-interior node k=%d' \
+                      % k)
+            elif s[k] > self.b[k] + 0.001:
                 sP[k] += eps
             else:
-                print('WARNING: skipping bare-ground perturbation point k=%d' % k)
+                print('WARNING viewperturb(): skipping bare-ground node k=%d' \
+                      % k)
         meshP = self.extrudetogeometry(sP)
         uP, pP = self.solvestokes(meshP)
+        kresP = self.kinematical(meshP, uP)
         # compute difference as a function on the unperturbed mesh
         V = fd.VectorFunctionSpace(meshs, 'Lagrange', 2)
         W = fd.FunctionSpace(meshs, 'Lagrange', 1)
@@ -277,8 +288,12 @@ class SmootherStokes(SmootherObstacleProblem):
         dp.dat.data[:] = pP.dat.data_ro[:] - ps.dat.data_ro[:]
         dp /= 1.0e5
         dp.rename('dp (bar)')
-        print('saving perturbations du,dp to %s' % self.savename)
-        fd.File(self.savename).write(du,dp)
+        # dres is difference of full residual cause a(x) cancels
+        dres = fd.Function(W)
+        dres.dat.data[:] = kresP.dat.data_ro[:] - kress.dat.data_ro[:]
+        dres.rename('dres')
+        print('saving perturbations du,dp,dres to %s' % self.savename)
+        fd.File(self.savename).write(du,dp,dres)
 
     def smoothersweep(self, mesh1d, s, ella, phi, currentr=None):
         '''Do in-place smoothing on s(x).  On input, set currentr to a vector
