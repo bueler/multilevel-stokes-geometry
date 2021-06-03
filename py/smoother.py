@@ -244,6 +244,42 @@ class SmootherStokes(SmootherObstacleProblem):
         # include the climatic mass balance: - u|_s . n_s - a
         return mesh1d.ellf(r) - ella
 
+    def viewperturb(self, s, klist, eps=1.0):
+        '''For given s(x), compute velocity and pressure perturbations
+        from perturbation s[k] + eps, i.e. lifting surface by eps, at an
+        each interior node k in klist.  Saves to file self.savename, which
+        needs to be a .pvd file.'''
+        assert self.basemesh is not None
+        for k in klist:
+            assert 1 <= k <= len(s)-2  # only valid at interior nodes
+        assert self.savename is not None
+        assert len(self.savename) > 0
+        # solve the Glen-Stokes problem on the unperturbed extruded mesh
+        meshs = self.extrudetogeometry(s)
+        us, ps = self.solvestokes(meshs)
+        # solve on the PERTURBED extruded mesh
+        sP = s.copy()
+        for k in klist:
+            if s[k] > self.b[k] + 0.001:
+                sP[k] += eps
+            else:
+                print('WARNING: skipping bare-ground perturbation point k=%d' % k)
+        meshP = self.extrudetogeometry(sP)
+        uP, pP = self.solvestokes(meshP)
+        # compute difference as a function on the unperturbed mesh
+        V = fd.VectorFunctionSpace(meshs, 'Lagrange', 2)
+        W = fd.FunctionSpace(meshs, 'Lagrange', 1)
+        du = fd.Function(V)
+        du.dat.data[:] = uP.dat.data_ro[:] - us.dat.data_ro[:]
+        du *= secpera
+        du.rename('du (m a-1)')
+        dp = fd.Function(W)
+        dp.dat.data[:] = pP.dat.data_ro[:] - ps.dat.data_ro[:]
+        dp /= 1.0e5
+        dp.rename('dp (bar)')
+        print('saving perturbations du,dp to %s' % self.savename)
+        fd.File(self.savename).write(du,dp)
+
     def smoothersweep(self, mesh1d, s, ella, phi, currentr=None):
         '''Do in-place smoothing on s(x).  On input, set currentr to a vector
         to avoid re-computing the residual.  Computes and returns the residual

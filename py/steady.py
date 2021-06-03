@@ -89,6 +89,8 @@ adda('-sweepsonly', action='store_true', default=False,
      help='do smoother sweeps as cycles, instead of multilevel')
 adda('-up', type=int, default=2, metavar='N',
      help='smoother sweeps after coarse-mesh correction (default=%(default)s)')
+adda('-viewperturb', type=int, default=None, nargs='+', metavar='N ...',
+     help='view u,p perturbations at these nodes to .pvd file; use with -o')
 args, unknown = parser.parse_known_args()
 if args.steadyhelp:
     parser.print_help()
@@ -96,6 +98,8 @@ if args.steadyhelp:
 
 if args.padding:
     assert args.Hmin > 0.0, 'padding requires minimum positive thickness'
+if args.viewperturb is not None:
+    assert len(args.o) > 0, 'use -view perturb with -o'
 
 # mesh hierarchy: a list of MeshLevel1D with indices [0,..,levels-1]
 assert args.J >= args.jcoarse >= 0
@@ -164,6 +168,9 @@ if args.sweepsonly:
     if args.o:
         obsprob.savestatenextresidual(args.o + '_%d.pvd' % (j+1))
     obsprob.residual(mesh, s, ellf)  # extra residual call
+    if args.viewperturb is not None:
+        obsprob.savename = args.o + '_perturb.pvd'
+        obsprob.viewperturb(s, args.viewperturb)
 else:
     raise NotImplementedError('MCDN not implemented')
 
