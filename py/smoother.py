@@ -129,19 +129,19 @@ class SmootherStokes(SmootherObstacleProblem):
         return u, p
 
     def createbasemesh(self, mesh1d):
-        '''Create a Firedrake interval base mesh matching mesh1d.
-        Also store the bed elevation.'''
+        '''Create a Firedrake interval base mesh matching mesh1d.  Also store
+        the bed elevation.'''
         self.mx = mesh1d.m + 1
         self.basemesh = fd.IntervalMesh(self.mx, length_or_left=0.0,
                                         right=mesh1d.xmax)
         self.b = self.phi(mesh1d.xx())
 
-    def extrudemesh(self, s, report=False):
-        '''Generate extruded mesh over self.basemesh, to height s.
-        The icy columns get their height from s, with minimum height
-        args.Hmin.  By default the extruded mesh has empty (0-element) columns
-        if ice-free according to s.  If args.padding==True then the whole
-        extruded mesh has the same layer count.'''
+    def extrudetogeometry(self, s, report=False):
+        '''Generate extruded mesh over self.basemesh, to height s.  The icy
+        columns get their height from s, with minimum height args.Hmin.  By
+        default the extruded mesh has empty (0-element) columns if ice-free
+        according to s.  If args.padding==True then the whole extruded mesh has
+        the same layer count.  Optional reporting of mesh stats.'''
         assert self.basemesh is not None
         if report:
             print('mesh: base of %d elements (intervals)' \
@@ -168,11 +168,11 @@ class SmootherStokes(SmootherObstacleProblem):
                 icycount = sum(icyelement)
                 print('      extruded has %d x %d icy elements and %d ice-free base elements' \
                       % (icycount, mz, self.mx - icycount))
-
-        # generate extruded mesh of height s(x)
+        # put s(x) into a Firedrake function on the base mesh
         P1base = fd.FunctionSpace(self.basemesh, 'Lagrange', 1)
         sbase = fd.Function(P1base)
         sbase.dat.data[:] = np.maximum(s, self.args.Hmin)
+        # change mesh height to s(x)
         x, z = fd.SpatialCoordinate(mesh)
         xxzz = fd.as_vector([x, extend(mesh, sbase) * z])
         coords = fd.Function(mesh.coordinates.function_space())
@@ -180,9 +180,10 @@ class SmootherStokes(SmootherObstacleProblem):
         return mesh
 
     def extracttop(self, mesh1d, mesh, field):
-        '''Loop over base mesh, finding top cells where ice is present,
-        then top nodes, and evaluate the field there.  Only works for
-        Q1 fields.  (Thanks Lawrence Mitchell.)'''
+        '''On an extruded mesh with some ice-free (i.e. empty) columns, loop
+        over the base mesh finding top cells where ice is present, then top
+        nodes, and evaluate the field there.  Only works for Q1 fields.
+        (Thanks Lawrence Mitchell.)'''
         assert self.basemesh is not None
         # get the cells from basemesh and mesh
         bmP1 = fd.FunctionSpace(self.basemesh, 'Lagrange', 1)
@@ -223,23 +224,24 @@ class SmootherStokes(SmootherObstacleProblem):
         if firstcall: # if needed, generate self.basemesh from mesh1d
             self.createbasemesh(mesh1d)
         # solve the Glen-Stokes problem on the extruded mesh
-        mesh = self.extrudemesh(s, report=firstcall)
+        mesh = self.extrudetogeometry(s, report=firstcall)
         u, p = self.solvestokes(mesh, printsizes=firstcall)
-        # evaluate kinematic part of surface residual on the extruded mesh
+        # evaluate kinematic part of residual  (note - u|_s . n_s = u ds/dx - w)
         _, z = fd.SpatialCoordinate(mesh)
-        kres_ufl = u[0] * z.dx(0) - u[1]  #  - u|_s . n_s = u ds/dx - w
+        kres_ufl = u[0] * z.dx(0) - u[1]
         Q1 = fd.FunctionSpace(mesh, 'Lagrange', 1)
         kres = fd.Function(Q1).interpolate(kres_ufl)
         if self.saveflag:
             self.savestate(mesh, u, p, kres)
-        # return surface residual vector on z = s(x):   r = - u|_s . n_s - a
+        # get kinematic residual r = - u|_s . n_s on z = s(x)
         if self.args.padding:
             # in this case the 'top' BC nodes are all we need
             topbc = fd.DirichletBC(Q1, 1.0, 'top')
             r = kres.dat.data_ro[topbc.nodes]
         else:
+            # if some columns are ice-free then nontrivial extraction needed
             r = self.extracttop(mesh1d, mesh, kres)
-        # finally include the climatic mass balance
+        # include the climatic mass balance: - u|_s . n_s - a
         return mesh1d.ellf(r) - ella
 
     def smoothersweep(self, mesh1d, s, ella, phi, currentr=None):
