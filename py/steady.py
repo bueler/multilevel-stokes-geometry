@@ -2,7 +2,7 @@
 '''Solve steady-geometry Stokes obstacle problem by a multilevel constraint decomposition method.'''
 
 # TODO:
-#   2. widen the default sheet
+#   2. widen the default sheet; consider -domainlength 60.0e3 -domeL 25.0e3
 #   3. implement -smoother jacobicolor with default coloring mode being 3 ice thicknesses
 #   4. copy mg-glaciers/py/mcdn.py and build it out
 
@@ -57,6 +57,10 @@ adda('-cyclemax', type=int, default=100, metavar='N',
      help='maximum number of (multilevel) cycles (default=%(default)s)')
 adda('-domainlength', type=float, default=30.0e3, metavar='L',
      help='solve on [0,L] (default=%(default)s m)')
+adda('-domeH0', type=float, default=1000.0, metavar='L',
+     help='center height of dome formula ice sheet (default=%(default)s m)')
+adda('-domeL', type=float, default=10.0e3, metavar='L',
+     help='half-width of dome formula ice sheet (default=%(default)s m)')
 adda('-down', type=int, default=0, metavar='N',
      help='smoother sweeps before coarse-mesh correction (default=%(default)s)')
 adda('-eps', type=float, metavar='X', default=1.0e-2,  # FIXME sensitive

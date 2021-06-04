@@ -16,10 +16,6 @@ class IceProblem(ABC):
 
     def __init__(self, args):
         self.args = args
-        # parameters for initial condition, a dome; see van der Veen
-        #   (2013) section 5.3
-        self.domeL = 10.0e3       # half-width of sheet
-        self.domeH0 = 1000.0      # center thickness
         # derived constant
         self.Gamma = 2.0 * A3 * (rhoi * g)**nglen
         self.Gamma /= (nglen + 2.0)
@@ -36,24 +32,24 @@ class IceProblem(ABC):
         invn = 1.0 / n
         r1 = 2.0 * n + 2.0                   # e.g. 8
         s1 = (1.0 - n) / n                   #     -2/3
-        C = self.domeH0**r1 * self.Gamma     # A_0 in van der Veen is Gamma here
-        C /= ( 2.0 * self.domeL * (1.0 - 1.0 / n) )**n
+        C = self.args.domeH0**r1 * self.Gamma # Gamma=A_0 in van der Veen
+        C /= ( 2.0 * self.args.domeL * (1.0 - 1.0 / n) )**n
         xc = self.args.domainlength / 2.0
-        X = (x - xc) / self.domeL          # rescaled coord
+        X = (x - xc) / self.args.domeL          # rescaled coord
         m = np.zeros(np.shape(x))
         # usual formula for 0 < |X| < 1
         zzz = (abs(X) > 0.0) * (abs(X) < 1.0)
         if any(zzz):
             Xin = abs(X[zzz])
             Yin = 1.0 - Xin
-            m[zzz] = (C / self.domeL) \
+            m[zzz] = (C / self.args.domeL) \
                      * ( Xin**invn + Yin**invn - 1.0 )**(n-1.0) \
                      * ( Xin**s1 - Yin**s1 )
         # fill singular origin with near value
         if any(X == 0.0):
             Xnear = 1.0e-8
             Ynear = 1.0 - Xnear
-            m[X == 0.0] = (C / self.domeL) \
+            m[X == 0.0] = (C / self.args.domeL) \
                           * ( Xnear**invn + Ynear**invn - 1.0 )**(n-1.0) \
                           * ( Xnear**s1 - Ynear**s1 )
         # extend by ablation
@@ -67,9 +63,9 @@ class IceProblem(ABC):
         n = nglen
         p1 = n / (2.0 * n + 2.0)                  # e.g. 3/8
         q1 = 1.0 + 1.0 / n                        #      4/3
-        Z = self.domeH0 / (n - 1.0)**p1         # outer constant
+        Z = self.args.domeH0 / (n - 1.0)**p1      # outer constant
         xc = self.args.domainlength / 2.0
-        X = (x - xc) / self.domeL               # rescaled coord
+        X = (x - xc) / self.args.domeL            # rescaled coord
         Xin = abs(X[abs(X) < 1.0])                # rescaled distance from
                                                   #   center, in ice
         Yin = 1.0 - Xin
