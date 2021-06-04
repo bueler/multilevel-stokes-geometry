@@ -152,6 +152,7 @@ def final(mesh, s, cmb, filename=''):
     output(filename, 'image of final iterate')
 
 if args.sweepsonly:
+    print('sweepsonly with smoother "%s" ...' % args.smoother)
     if args.o:
         smooth.savestatenextresidual(args.o + '_0.pvd')
     r = smooth.residual(mesh, s, ellf)
@@ -170,6 +171,8 @@ if args.sweepsonly:
         elif normF > 100.0 * normF0:
             print('iteration DIVERGED by F>100F0 at step %d' % (j+1))
             break
+        elif j + 1 == args.cyclemax:
+            print('iteration REACHED CYCLEMAX at step %d' % (j+1))
     if args.o:
         smooth.savestatenextresidual(args.o + '_%d.pvd' % (j+1))
     smooth.residual(mesh, s, ellf)  # extra residual call
