@@ -136,26 +136,25 @@ s = problem.initial(finemesh.xx())
 # set-up smoother
 smooth = SmootherStokes(args)
 
-# solve
-if args.sweepsonly:
-    print('sweepsonly with smoother "%s" ...' % args.smoother)
-else:
-    raise NotImplementedError('MCDN not implemented')
-
+# generate .pvd file with initial state (see first residual())
 if args.o:
     smooth.savestatenextresidual(args.o + '_0.pvd')
-r = smooth.residual(finemesh, s, ella)
+
+# solve
+if args.sweepsonly:
+    print('SWEEPSONLY with smoother "%s" ...' % args.smoother)
+else:
+    print('MCDN with smoother "%s" ...' % args.smoother)
+r = smooth.residual(finemesh, s, ella)  # generates file if -o above
 normF0 = smooth.inactiveresidualnorm(finemesh, s, r, finemesh.b)
 if args.monitor:
     print('   0: %.4e' % normF0)
-
 for j in range(args.cyclemax):
     if args.sweepsonly:
         r = smooth.smoothersweep(finemesh, s, ella, currentr=r)
     else:
-        s += mcdnvcycle(args, smooth, args.J, hierarchy,
-                        s, ella, levels=args.J+1)
-        r = smooth.residual(finemesh, s, ella)  # needed? return from MCDN?
+        s += mcdnvcycle(args, smooth, hierarchy, s, ella)
+        r = smooth.residual(finemesh, s, ella)  # needed? return it from MCDN?
     normF = smooth.inactiveresidualnorm(finemesh, s, r, finemesh.b)
     if args.monitor:
         print('%4d: %.4e' % (j+1, normF))
@@ -168,13 +167,16 @@ for j in range(args.cyclemax):
         break
     elif j + 1 == args.cyclemax:
         print('iteration REACHED CYCLEMAX at step %d' % (j+1))
+
+# output to .pvd
 if args.o:
     smooth.savestatenextresidual(args.o + '_%d.pvd' % (j+1))
-smooth.residual(finemesh, s, ella)  # extra residual call
-if args.viewperturb is not None:
-    smooth.savename = args.o + '_perturb.pvd'
-    smooth.viewperturb(s, args.viewperturb)
+    smooth.residual(finemesh, s, ella)  # extra residual call generates file
+    if args.viewperturb is not None:
+        smooth.savename = args.o + '_perturb.pvd'
+        smooth.viewperturb(s, args.viewperturb)
 
+# output an image
 if args.oimage:
     showiteratecmb(finemesh, s, problem.source(finemesh.xx()),
                    filename=args.oimage)

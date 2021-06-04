@@ -5,46 +5,56 @@ __all__ = ['mcdnvcycle']
 
 import numpy as np
 
+def _indentprint(n, s):
+    '''Print 2n spaces and then string s.'''
+    for _ in range(n):
+        print('  ', end='')
+    print(s)
+
 def _levelreport(indent, j, m, sweeps):
-    indentprint(indent - j, 'level %d: %d sweeps over m=%d nodes' \
-                             % (j, sweeps, m))
+    _indentprint(indent - j, 'level %d: %d sweeps over m=%d nodes' \
+                              % (j, sweeps, m))
 
 def _coarsereport(indent, m, sweeps):
-    indentprint(indent, 'coarsest: %d sweeps over m=%d nodes' \
-                         % (sweeps, m))
+    _indentprint(indent, 'coarsest: %d sweeps over m=%d nodes' \
+                          % (sweeps, m))
 
-def mcdnvcycle(args, smoother, hierarchy, s, ella, b, levels=None):
+def mcdnvcycle(args, smoother, hierarchy, s, ella):
     '''Apply one V-cycle of the MCDN method.  Input args is an options
     dictionary with parameters.  Input smoother is of type
     SmootherObstacleProblem.  Note hierarchy[j] is of type MeshLevel1D,
     for j=0,...,args.J, but only args.jcoarse,...,args.J are actually used.
     This method generates all the defect constraints hierarchy[j].chi for
-    j <= J, but hierarchy[j].b must
-    be defined for all mesh levels.  The input iterate w is in V^j and
-    linear functional ell is in V^J'.  The coarse solver is the same as
-    the smoother.'''
+    j <= J, but hierarchy[j].b must be already defined for all mesh levels.
+    The input iterate s is in V^j and linear functional ella is in V^J'.
+    The coarse solver is the same as the smoother.  Returns a correction
+    to s.'''
 
     raise NotImplementedError('MCDN not implemented')
-    assert args.down >= 0 and args.up >= 0 and args.coarse >= 0
+    assert args.downsweeps >= 0 and args.upsweeps >= 0 \
+           and args.coarsesweeps >= 0
 
     # set up on finest level
-    hierarchy[J].checklen(w)
-    hierarchy[J].checklen(ell)
-    hierarchy[J].ell = ell
-    hierarchy[J].g = w
+    hierarchy[args.J].checklen(s)
+    hierarchy[args.J].checklen(ella)
+    hierarchy[args.J].checklen(hierarchy[args.J].b)
+    hierarchy[args.J].ell = ella
+    hierarchy[args.J].g = s
+    hierarchy[args.J].chi = hierarchy[args.J].b - s
 
     # downward
-    for k in range(J, 0, -1):
+    for k in range(args.J, args.jcoarse, -1):
         # compute next defect constraint using monotone restriction
         hierarchy[k-1].chi = hierarchy[k].mR(hierarchy[k].chi)
         # define down-obstacle
         phi = hierarchy[k].chi - hierarchy[k].cP(hierarchy[k-1].chi)
         # smooth the correction y
         if args.mgview:
-            _levelreport(levels-1, k, hierarchy[k].m, args.down)
+            _levelreport(levels-1, k, hierarchy[k].m, args.downsweeps)
         hierarchy[k].y = hierarchy[k].zeros()
-        obsprob.smoother(args.down, hierarchy[k], hierarchy[k].y,
-                         hierarchy[k].ell, phi)
+        #FIXME FROM HERE
+        smoother.smoother(args.downsweeps, hierarchy[k], hierarchy[k].y,
+                          hierarchy[k].ell, phi)
         # update residual
         wk = hierarchy[k].g + hierarchy[k].y
         F = obsprob.residual(hierarchy[k], wk, hierarchy[k].ell)
