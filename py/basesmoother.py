@@ -58,10 +58,6 @@ class SmootherObstacleProblem(ABC):
                 forward = not forward
 
     @abstractmethod
-    def initial(self, x):
-        '''Generate initial shape.'''
-
-    @abstractmethod
     def residual(self, mesh, w, ell):
         '''Compute the residual functional for given iterate w.  Note
         ell is a source term in V^j'.'''
@@ -70,11 +66,3 @@ class SmootherObstacleProblem(ABC):
     def smoothersweep(self, mesh, w, ell, phi, forward=True):
         '''Apply one sweep of obstacle-problem smoother on mesh to modify w in
         place.'''
-
-    @abstractmethod
-    def phi(self, x):
-        '''Evaluate obstacle phi at location(s) x.'''
-
-    @abstractmethod
-    def source(self, x):
-        '''Evaluate source function f at location(s) x.'''

@@ -2,7 +2,6 @@
 '''Solve steady-geometry Stokes obstacle problem by a multilevel constraint decomposition method.'''
 
 # TODO:
-#   1. separate the initialization and source term (= problem) from the rest of the smoother
 #   2. widen the default sheet
 #   3. implement -smoother jacobicolor with default coloring mode being 3 ice thicknesses
 #   4. copy mg-glaciers/py/mcdn.py and build it out
@@ -21,6 +20,7 @@ import matplotlib.pyplot as plt
 from firedrake import *
 
 from meshlevel import MeshLevel1D
+from problem import IceProblem, secpera
 from smoother import SmootherStokes
 #from mcdn import mcdnsolver
 
@@ -111,16 +111,15 @@ hierarchy = [None] * (levels)             # list [None,...,None]
 for j in range(levels):
     hierarchy[j] = MeshLevel1D(j=j+args.jcoarse, xmax=args.domainlength)
 
-obsprob = SmootherStokes(args)
-
 # fine-level problem data
+problem = IceProblem(args)
 mesh = hierarchy[-1]
-phi = obsprob.phi(mesh.xx())
-ellf = mesh.ellf(obsprob.source(mesh.xx()))  # source functional ell[v] = <f,v>
-s = obsprob.initial(mesh.xx())
-#obsprob.shownonzeros(s)
+b = problem.bed(mesh.xx())
+ellf = mesh.ellf(problem.source(mesh.xx()))  # source functional ell[v] = <f,v>
+s = problem.initial(mesh.xx())
 
-b = mesh.zeros()
+# set-up smoother
+smooth = SmootherStokes(args, b)
 
 def output(filename, description):
     '''Either save result to an image file or use show().  Supply '' as filename
@@ -133,7 +132,6 @@ def output(filename, description):
 
 def final(mesh, s, cmb, filename=''):
     '''Generate graphic showing final iterate and CMB function.'''
-    secpera = 31556926.0
     mesh.checklen(s)
     xx = mesh.xx()
     xx /= 1000.0
@@ -151,14 +149,14 @@ def final(mesh, s, cmb, filename=''):
 
 if args.sweepsonly:
     if args.o:
-        obsprob.savestatenextresidual(args.o + '_0.pvd')
-    r = obsprob.residual(mesh, s, ellf)
-    normF0 = obsprob.inactiveresidualnorm(mesh, s, r, b)
+        smooth.savestatenextresidual(args.o + '_0.pvd')
+    r = smooth.residual(mesh, s, ellf)
+    normF0 = smooth.inactiveresidualnorm(mesh, s, r, b)
     if args.monitor:
         print('   0: %.4e' % normF0)
     for j in range(args.cyclemax):
-        r = obsprob.smoothersweep(mesh, s, ellf, b, currentr=r)
-        normF = obsprob.inactiveresidualnorm(mesh, s, r, b)
+        r = smooth.smoothersweep(mesh, s, ellf, b, currentr=r)
+        normF = smooth.inactiveresidualnorm(mesh, s, r, b)
         if args.monitor:
             print('%4d: %.4e' % (j+1, normF))
         if normF < args.irtol * normF0:
@@ -169,15 +167,13 @@ if args.sweepsonly:
             print('iteration DIVERGED by F>100F0 at step %d' % (j+1))
             break
     if args.o:
-        obsprob.savestatenextresidual(args.o + '_%d.pvd' % (j+1))
-    obsprob.residual(mesh, s, ellf)  # extra residual call
+        smooth.savestatenextresidual(args.o + '_%d.pvd' % (j+1))
+    smooth.residual(mesh, s, ellf)  # extra residual call
     if args.viewperturb is not None:
-        obsprob.savename = args.o + '_perturb.pvd'
-        obsprob.viewperturb(s, args.viewperturb)
+        smooth.savename = args.o + '_perturb.pvd'
+        smooth.viewperturb(s, args.viewperturb)
 else:
     raise NotImplementedError('MCDN not implemented')
 
 if args.oimage:
-    final(mesh, s, obsprob.source(mesh.xx()), filename=args.oimage)
-
-# FIXME much more to do
+    final(mesh, s, smooth.source(mesh.xx()), filename=args.oimage)
