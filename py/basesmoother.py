@@ -2,6 +2,7 @@
 
 __all__ = ['SmootherObstacleProblem']
 
+import sys
 from abc import ABC, abstractmethod
 import numpy as np
 
@@ -12,18 +13,15 @@ class SmootherObstacleProblem(ABC):
     def __init__(self, args, admissibleeps=1.0e-10):
         self.args = args
         self.admissibleeps = admissibleeps
-        self.inadmissible = 0  # count of repaired admissibility violations
         self.name = 'base'
 
-    def _checkrepairadmissible(self, mesh, w, phi):
-        '''Check and repair feasibility.'''
+    def _checkadmissible(self, mesh, w, phi):
+        '''Check admissibility and stop if not.'''
         for p in range(1, mesh.m+1):
             if w[p] < phi[p] - self.admissibleeps:
-                if self.args.printwarnings:
-                    print('WARNING: repairing inadmissible w[%d]=%e < phi[%d]=%e on level %d (m=%d)' \
-                          % (p, w[p], p, phi[p], mesh.j, mesh.m))
-                w[p] = phi[p]
-                self.inadmissible += 1
+                print('ERROR: inadmissible w[%d]=%e < phi[%d]=%e (m=%d)' \
+                      % (p, w[p], p, phi[p], mesh.m))
+                sys.exit(0)
 
     def _sweepindices(self, mesh, forward=True):
         '''Generate indices for sweep.'''
