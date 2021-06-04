@@ -21,13 +21,13 @@
 import sys
 import argparse
 import numpy as np
-import matplotlib.pyplot as plt
 from firedrake import *
 
 from meshlevel import MeshLevel1D
-from problem import IceProblem, secpera
+from problem import IceProblem
 from smoother import SmootherStokes
 #from mcdn import mcdnsolver
+from visualize import showiteratecmb
 
 parser = argparse.ArgumentParser(description='''
 Solve the 1D obstacle problem for the steady geometry of a glacier using
@@ -56,7 +56,7 @@ References:
     allow_abbrev=False,  # bug in python 3.8 causes this to be ignored
     add_help=False)
 adda = parser.add_argument
-adda('-coarse', type=int, default=1, metavar='N',
+adda('-coarsesweeps', type=int, default=1, metavar='N',
      help='smoother sweeps on coarsest grid (default=%(default)s)')
 adda('-cyclemax', type=int, default=100, metavar='N',
      help='maximum number of (multilevel) cycles (default=%(default)s)')
@@ -66,7 +66,7 @@ adda('-domeH0', type=float, default=1000.0, metavar='L',
      help='center height of dome formula ice sheet (default=%(default)s m)')
 adda('-domeL', type=float, default=10.0e3, metavar='L',
      help='half-width of dome formula ice sheet (default=%(default)s m)')
-adda('-down', type=int, default=0, metavar='N',
+adda('-downsweeps', type=int, default=0, metavar='N',
      help='smoother sweeps before coarse-mesh correction (default=%(default)s)')
 adda('-eps', type=float, metavar='X', default=1.0e-2,  # FIXME sensitive
     help='regularization used in viscosity (default=%(default)s)')
@@ -99,7 +99,7 @@ adda('-steadyhelp', action='store_true', default=False,
      help='print help for steady.py and end (vs -help for PETSc options)')
 adda('-sweepsonly', action='store_true', default=False,
      help='do smoother sweeps as cycles, instead of multilevel')
-adda('-up', type=int, default=2, metavar='N',
+adda('-upsweeps', type=int, default=2, metavar='N',
      help='smoother sweeps after coarse-mesh correction (default=%(default)s)')
 adda('-viewperturb', type=int, default=None, nargs='+', metavar='N ...',
      help='view u,p perturbations at these nodes to .pvd file; use with -o')
@@ -113,60 +113,39 @@ if args.padding:
 if args.viewperturb is not None:
     assert len(args.o) > 0, 'use -view perturb with -o'
 
-# mesh hierarchy: a list of MeshLevel1D with indices [0,..,levels-1]
-assert args.J >= args.jcoarse >= 0
-levels = args.J - args.jcoarse + 1
-hierarchy = [None] * (levels)             # list [None,...,None]
-for j in range(levels):
-    hierarchy[j] = MeshLevel1D(j=j+args.jcoarse, xmax=args.domainlength)
+if args.sweepsonly:
+    # build fine-level mesh only
+    finemesh = MeshLevel1D(j=args.J, xmax=args.domainlength)
+else:
+    # build mesh hierarchy: list of MeshLevel1D with indices [0,..,levels-1]
+    assert args.J >= args.jcoarse >= 0
+    levels = args.J - args.jcoarse + 1
+    hierarchy = [None] * (levels)             # list [None,...,None]
+    for j in range(levels):
+        hierarchy[j] = MeshLevel1D(j=j+args.jcoarse, xmax=args.domainlength)
+    finemesh = hierarchy[-1]
 
 # fine-level problem data
 problem = IceProblem(args)
-mesh = hierarchy[-1]
-b = problem.bed(mesh.xx())
-ellf = mesh.ellf(problem.source(mesh.xx()))  # source functional ell[v] = <f,v>
-s = problem.initial(mesh.xx())
+b = problem.bed(finemesh.xx())
+ella = finemesh.ellf(problem.source(finemesh.xx()))  # source ell[v] = <a,v>
+s = problem.initial(finemesh.xx())
 
 # set-up smoother
 smooth = SmootherStokes(args, b)
 
-def output(filename, description):
-    '''Either save result to an image file or use show().  Supply '' as filename
-    to use show().'''
-    if filename is None:
-        plt.show()
-    else:
-        print('saving %s to %s ...' % (description, filename))
-        plt.savefig(filename, bbox_inches='tight')
-
-def final(mesh, s, cmb, filename=''):
-    '''Generate graphic showing final iterate and CMB function.'''
-    mesh.checklen(s)
-    xx = mesh.xx()
-    xx /= 1000.0
-    plt.figure(figsize=(15.0, 8.0))
-    plt.subplot(2,1,1)
-    plt.plot(xx, s, 'k', linewidth=4.0)
-    plt.xlabel('x (km)')
-    plt.ylabel('surface elevation (m)')
-    plt.subplot(2,1,2)
-    plt.plot(xx, cmb * secpera, 'r')
-    plt.grid()
-    plt.ylabel('CMB (m/a)')
-    plt.xlabel('x (km)')
-    output(filename, 'image of final iterate')
-
+# solve
 if args.sweepsonly:
     print('sweepsonly with smoother "%s" ...' % args.smoother)
     if args.o:
         smooth.savestatenextresidual(args.o + '_0.pvd')
-    r = smooth.residual(mesh, s, ellf)
-    normF0 = smooth.inactiveresidualnorm(mesh, s, r, b)
+    r = smooth.residual(finemesh, s, ella)
+    normF0 = smooth.inactiveresidualnorm(finemesh, s, r, b)
     if args.monitor:
         print('   0: %.4e' % normF0)
     for j in range(args.cyclemax):
-        r = smooth.smoothersweep(mesh, s, ellf, b, currentr=r)
-        normF = smooth.inactiveresidualnorm(mesh, s, r, b)
+        r = smooth.smoothersweep(finemesh, s, ella, b, currentr=r)
+        normF = smooth.inactiveresidualnorm(finemesh, s, r, b)
         if args.monitor:
             print('%4d: %.4e' % (j+1, normF))
         if normF < args.irtol * normF0:
@@ -180,7 +159,7 @@ if args.sweepsonly:
             print('iteration REACHED CYCLEMAX at step %d' % (j+1))
     if args.o:
         smooth.savestatenextresidual(args.o + '_%d.pvd' % (j+1))
-    smooth.residual(mesh, s, ellf)  # extra residual call
+    smooth.residual(finemesh, s, ella)  # extra residual call
     if args.viewperturb is not None:
         smooth.savename = args.o + '_perturb.pvd'
         smooth.viewperturb(s, args.viewperturb)
@@ -188,4 +167,5 @@ else:
     raise NotImplementedError('MCDN not implemented')
 
 if args.oimage:
-    final(mesh, s, smooth.source(mesh.xx()), filename=args.oimage)
+    showiteratecmb(finemesh, s, problem.source(finemesh.xx()),
+                   filename=args.oimage)
