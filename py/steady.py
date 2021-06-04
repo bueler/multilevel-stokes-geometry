@@ -2,7 +2,10 @@
 '''Solve steady-geometry Stokes obstacle problem by a multilevel constraint decomposition method.'''
 
 # TODO:
-#   1. copy partI/mcdn.py and build it out
+#   1. separate the initialization and source term (= problem) from the rest of the smoother
+#   2. widen the default sheet
+#   3. implement -smoother jacobicolor with default coloring mode being 3 ice thicknesses
+#   4. copy mg-glaciers/py/mcdn.py and build it out
 
 # RUNS:
 #   actually converges
