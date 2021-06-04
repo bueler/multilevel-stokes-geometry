@@ -26,7 +26,7 @@ from firedrake import *
 from meshlevel import MeshLevel1D
 from problem import IceProblem
 from smoother import SmootherStokes
-#from mcdn import mcdnsolver
+from mcdn import mcdnvcycle
 from visualize import showiteratecmb
 
 parser = argparse.ArgumentParser(description='''
@@ -113,58 +113,67 @@ if args.padding:
 if args.viewperturb is not None:
     assert len(args.o) > 0, 'use -view perturb with -o'
 
+# problem and mesh hierarchy
+problem = IceProblem(args)
 if args.sweepsonly:
     # build fine-level mesh only
     finemesh = MeshLevel1D(j=args.J, xmax=args.domainlength)
+    finemesh.b = problem.bed(finemesh.xx())
 else:
-    # build mesh hierarchy: list of MeshLevel1D with indices [0,..,levels-1]
+    # build mesh hierarchy: list of MeshLevel1D with indices [0,..,J]
+    # (some coarse levels will be unused if jcoarse > 0)
     assert args.J >= args.jcoarse >= 0
-    levels = args.J - args.jcoarse + 1
-    hierarchy = [None] * (levels)             # list [None,...,None]
-    for j in range(levels):
-        hierarchy[j] = MeshLevel1D(j=j+args.jcoarse, xmax=args.domainlength)
-    finemesh = hierarchy[-1]
+    hierarchy = [None] * (args.J + 1)             # list [None,...,None]
+    for j in range(args.J + 1):
+        hierarchy[j] = MeshLevel1D(j=j, xmax=args.domainlength)
+        hierarchy[j].b = problem.bed(hierarchy[j].xx())
+    finemesh = hierarchy[args.J]
 
-# fine-level problem data
-problem = IceProblem(args)
-b = problem.bed(finemesh.xx())
+# fine-level data
 ella = finemesh.ellf(problem.source(finemesh.xx()))  # source ell[v] = <a,v>
 s = problem.initial(finemesh.xx())
 
 # set-up smoother
-smooth = SmootherStokes(args, b)
+smooth = SmootherStokes(args)
 
 # solve
 if args.sweepsonly:
     print('sweepsonly with smoother "%s" ...' % args.smoother)
-    if args.o:
-        smooth.savestatenextresidual(args.o + '_0.pvd')
-    r = smooth.residual(finemesh, s, ella)
-    normF0 = smooth.inactiveresidualnorm(finemesh, s, r, b)
-    if args.monitor:
-        print('   0: %.4e' % normF0)
-    for j in range(args.cyclemax):
-        r = smooth.smoothersweep(finemesh, s, ella, b, currentr=r)
-        normF = smooth.inactiveresidualnorm(finemesh, s, r, b)
-        if args.monitor:
-            print('%4d: %.4e' % (j+1, normF))
-        if normF < args.irtol * normF0:
-            print('iteration CONVERGED at step %d by F<(%.2e)F0' \
-                  % (j+1, args.irtol))
-            break
-        elif normF > 100.0 * normF0:
-            print('iteration DIVERGED by F>100F0 at step %d' % (j+1))
-            break
-        elif j + 1 == args.cyclemax:
-            print('iteration REACHED CYCLEMAX at step %d' % (j+1))
-    if args.o:
-        smooth.savestatenextresidual(args.o + '_%d.pvd' % (j+1))
-    smooth.residual(finemesh, s, ella)  # extra residual call
-    if args.viewperturb is not None:
-        smooth.savename = args.o + '_perturb.pvd'
-        smooth.viewperturb(s, args.viewperturb)
 else:
     raise NotImplementedError('MCDN not implemented')
+
+if args.o:
+    smooth.savestatenextresidual(args.o + '_0.pvd')
+r = smooth.residual(finemesh, s, ella)
+normF0 = smooth.inactiveresidualnorm(finemesh, s, r, finemesh.b)
+if args.monitor:
+    print('   0: %.4e' % normF0)
+
+for j in range(args.cyclemax):
+    if args.sweepsonly:
+        r = smooth.smoothersweep(finemesh, s, ella, currentr=r)
+    else:
+        s += mcdnvcycle(args, smooth, args.J, hierarchy,
+                        s, ella, levels=args.J+1)
+        r = smooth.residual(finemesh, s, ella)  # needed? return from MCDN?
+    normF = smooth.inactiveresidualnorm(finemesh, s, r, finemesh.b)
+    if args.monitor:
+        print('%4d: %.4e' % (j+1, normF))
+    if normF < args.irtol * normF0:
+        print('iteration CONVERGED at step %d by F<(%.2e)F0' \
+              % (j+1, args.irtol))
+        break
+    elif normF > 100.0 * normF0:
+        print('iteration DIVERGED by F>100F0 at step %d' % (j+1))
+        break
+    elif j + 1 == args.cyclemax:
+        print('iteration REACHED CYCLEMAX at step %d' % (j+1))
+if args.o:
+    smooth.savestatenextresidual(args.o + '_%d.pvd' % (j+1))
+smooth.residual(finemesh, s, ella)  # extra residual call
+if args.viewperturb is not None:
+    smooth.savename = args.o + '_perturb.pvd'
+    smooth.viewperturb(s, args.viewperturb)
 
 if args.oimage:
     showiteratecmb(finemesh, s, problem.source(finemesh.xx()),

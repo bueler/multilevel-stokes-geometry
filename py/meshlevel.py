@@ -29,6 +29,7 @@ class MeshLevel1D():
         else:
             self.mcoarser = None
         self.h = self.xmax / (self.m + 1)
+        self.b = None
         self.WU = 0
 
     def checklen(self, v, coarser=False):

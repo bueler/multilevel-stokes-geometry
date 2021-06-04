@@ -21,9 +21,8 @@ class SmootherStokes(SmootherObstacleProblem):
     extruded mesh for each residual evaluation.  Implements projected
     nonlinear versions of the Richardson and Jacobi smoothers.'''
 
-    def __init__(self, args, b, admissibleeps=1.0e-10):
+    def __init__(self, args, admissibleeps=1.0e-10):
         super().__init__(args, admissibleeps=admissibleeps)
-        self.b = b
         # smoother name
         self.name = 'SmootherStokes'
         # used in Stokes solver
@@ -119,11 +118,10 @@ class SmootherStokes(SmootherObstacleProblem):
         '''Create a Firedrake interval base mesh matching mesh1d.  Also store
         the bed elevation.'''
         self.mx = mesh1d.m + 1
-        mesh1d.checklen(self.b)
         self.basemesh = fd.IntervalMesh(self.mx, length_or_left=0.0,
                                         right=mesh1d.xmax)
 
-    def extrudetogeometry(self, s, report=False):
+    def extrudetogeometry(self, s, b, report=False):
         '''Generate extruded mesh over self.basemesh, to height s.  The icy
         columns get their height from s, with minimum height args.Hmin.  By
         default the extruded mesh has empty (0-element) columns if ice-free
@@ -144,7 +142,7 @@ class SmootherStokes(SmootherObstacleProblem):
                       % (self.mx, mz))
         else:
             layermap = np.zeros((self.mx, 2), dtype=int)  # [[0,0], ..., [0,0]]
-            thk = s - self.b
+            thk = s - b
             thkelement = ( (thk[:-1]) + (thk[1:]) ) / 2.0
             icyelement = (thkelement > self.args.Hmin + 1.0e-3)
             layermap[:,1] = mz * np.array(icyelement, dtype=int)
@@ -161,6 +159,7 @@ class SmootherStokes(SmootherObstacleProblem):
         sbase.dat.data[:] = np.maximum(s, self.args.Hmin)
         # change mesh height to s(x)
         x, z = fd.SpatialCoordinate(mesh)
+        # FIXME next line needs modification if b!=0
         xxzz = fd.as_vector([x, extend(mesh, sbase) * z])
         coords = fd.Function(mesh.coordinates.function_space())
         mesh.coordinates.assign(coords.interpolate(xxzz))
@@ -222,7 +221,7 @@ class SmootherStokes(SmootherObstacleProblem):
         if firstcall: # if needed, generate self.basemesh from mesh1d
             self.createbasemesh(mesh1d)
         # solve the Glen-Stokes problem on the extruded mesh
-        mesh = self.extrudetogeometry(s, report=firstcall)
+        mesh = self.extrudetogeometry(s, mesh1d.b, report=firstcall)
         u, p = self.solvestokes(mesh, printsizes=firstcall)
         # get kinematical part of residual
         kres = self.kinematical(mesh, u)
@@ -256,7 +255,7 @@ class SmootherStokes(SmootherObstacleProblem):
             if k < 1 or k > len(s)-2:
                 print('WARNING viewperturb(): skipping non-interior node k=%d' \
                       % k)
-            elif s[k] > self.b[k] + 0.001:
+            elif s[k] > mesh1d.b[k] + 0.001:
                 sP[k] += eps
             else:
                 print('WARNING viewperturb(): skipping bare-ground node k=%d' \
@@ -282,44 +281,44 @@ class SmootherStokes(SmootherObstacleProblem):
         print('saving perturbations du,dp,dres to %s' % self.savename)
         fd.File(self.savename).write(du,dp,dres)
 
-    def smoothersweep(self, mesh1d, s, ella, phi, currentr=None):
+    def smoothersweep(self, mesh1d, s, ella, currentr=None):
         '''Do in-place smoothing on s(x).  On input, set currentr to a vector
         to avoid re-computing the residual.  Computes and returns the residual
         after the sweep.'''
         mesh1d.checklen(s)
         mesh1d.checklen(ella)
-        mesh1d.checklen(phi)
+        mesh1d.checklen(mesh1d.b)
         if currentr is None:
             currentr = self.residual(mesh1d, s, ella)
         if self.args.smoother == 'richardson':
-            negd = self.richardsonsweep(s, phi, currentr)
+            negd = self.richardsonsweep(mesh1d, s, ella, currentr)
         elif self.args.smoother == 'gsslow':
-            negd = self.gsslowsweep(mesh1d, s, ella, phi, currentr)
+            negd = self.gsslowsweep(mesh1d, s, ella, currentr)
         elif self.args.smoother == 'jacobislow':
-            negd = self.jacobislowsweep(mesh1d, s, ella, phi, currentr)
+            negd = self.jacobislowsweep(mesh1d, s, ella, currentr)
         elif self.args.smoother == 'jacobicolor':
-            negd = self.jacobicolorsweep(mesh1d, s, ella, phi, currentr)
+            negd = self.jacobicolorsweep(mesh1d, s, ella, currentr)
         mesh1d.WU += 1
         if self.args.monitor and len(negd) > 0:
             print('      negative diagonal entries: ', end='')
             print(negd)
         return self.residual(mesh1d, s, ella)
 
-    def richardsonsweep(self, s, phi, r):
+    def richardsonsweep(self, mesh1d, s, ella, r):
         '''Do in-place projected nonlinear Richardson smoothing on s(x):
-            s <- max(s - omega * r, phi)
+            s <- max(s - omega * r, b)
         User must adjust omega to reasonable level.  (Do this with SIA-type
         stability criterion argument.)'''
-        np.maximum(s - self.args.omega * r, phi, s)
+        np.maximum(s - self.args.omega * r, mesh1d.b, s)
         return []
 
-    def gsslowsweep(self, mesh1d, s, ella, phi, r,
+    def gsslowsweep(self, mesh1d, s, ella, r,
                     eps=1.0, dump=False):
         '''Do in-place projected nonlinear Gauss-Seidel smoothing on s(x)
         where the diagonal entry d_i = F'(s)[psi_i,psi_i] is computed
         by VERY SLOW finite differencing of expensive residual calculations.
         If d_i > 0 then
-            s_i <- max(s_i - omega * r_i / d_i, phi_i)
+            s_i <- max(s_i - omega * r_i / d_i, b_i)
         but otherwise
             s_i <- phi_i.'''
         negd = []
@@ -331,23 +330,23 @@ class SmootherStokes(SmootherObstacleProblem):
             rperturb = self.residual(mesh1d, sperturb, ella)
             d = (rperturb[j] - r[j]) / eps
             if d > 0.0:
-                s[j] = max(s[j] - self.args.omega * r[j] / d, phi[j])
+                s[j] = max(s[j] - self.args.omega * r[j] / d, mesh1d.b[j])
             else:
-                s[j] = phi[j]
+                s[j] = mesh1d.b[j]
                 negd.append(j)
             # must recompute residual for s (nonlocal!)
             r = self.residual(mesh1d, s, ella)
         return negd
 
-    def jacobislowsweep(self, mesh1d, s, ella, phi, r,
+    def jacobislowsweep(self, mesh1d, s, ella, r,
                         eps=1.0, dump=False):
         '''Do in-place projected nonlinear Jacobi smoothing on s(x)
         where the diagonal entry d_i = F'(s)[psi_i,psi_i] is computed
         by VERY SLOW finite differencing of expensive residual calculations.
         If d_i > 0 then
-            snew_i <- max(s_i - omega * r_i / d_i, phi_i)
+            snew_i <- max(s_i - omega * r_i / d_i, b_i)
         but otherwise
-            snew_i <- phi_i.
+            snew_i <- b_i.
         After snew is completed we do s <- snew.'''
         snew = s.copy()
         negd = []
@@ -359,30 +358,30 @@ class SmootherStokes(SmootherObstacleProblem):
             rperturb = self.residual(mesh1d, sperturb, ella)
             d = (rperturb[j] - r[j]) / eps
             if d > 0.0:
-                snew[j] = max(s[j] - self.args.omega * r[j] / d, phi[j])
+                snew[j] = max(s[j] - self.args.omega * r[j] / d, mesh1d.b[j])
             else:
-                snew[j] = phi[j]
+                snew[j] = mesh1d.b[j]
                 negd.append(j)
         s[:] = snew[:] # in-place copy
         return negd
 
-    def jacobicolorsweep(self, mesh1d, s, ella, phi, r,
+    def jacobicolorsweep(self, mesh1d, s, ella, r,
                         eps=1.0, dump=False):
         '''Do in-place projected nonlinear Jacobi smoothing on s(x)
         where the diagonal entry d_i = F'(s)[psi_i,psi_i] is computed
         by SLOW finite differencing of expensive residual calculations
         using coloring.
         If d_i > 0 then
-            snew_i <- max(s_i - omega * r_i / d_i, phi_i)
+            snew_i <- max(s_i - omega * r_i / d_i, b_i)
         but otherwise
-            snew_i <- phi_i.
+            snew_i <- b_i.
         After snew is completed we do s <- snew.'''
-        thkmax = max(s - self.b)
+        thkmax = max(s - mesh1d.b)
         cgoal = 3.0  # coloring every 3 ice thickness, at least
         c = int(np.ceil(cgoal * thkmax / mesh1d.h))
         print('      c = %d' % c)
-        snew = self.b.copy() - 1.0  # values are checked below for admissibility
-        snew[0], snew[mesh1d.m+1] = self.b[0], self.b[mesh1d.m+1]
+        snew = mesh1d.b.copy() - 1.0  # check below for admissibility
+        snew[0], snew[mesh1d.m+1] = mesh1d.b[0], mesh1d.b[mesh1d.m+1]
         negd = []
         for k in range(c):
             jlist = np.arange(k+1, mesh1d.m+1, c, dtype=int)
@@ -395,11 +394,12 @@ class SmootherStokes(SmootherObstacleProblem):
             for j in jlist:
                 d = (rperturb[j] - r[j]) / eps
                 if d > 0.0:
-                    snew[j] = max(s[j] - self.args.omega * r[j] / d, phi[j])
+                    snew[j] = max(s[j] - self.args.omega * r[j] / d,
+                                  mesh1d.b[j])
                 else:
-                    snew[j] = phi[j]
+                    snew[j] = mesh1d.b[j]
                     negd.append(j)
         # check on whether coloring scheme hit each node
-        self._checkadmissible(mesh1d, snew, self.b)
+        self._checkadmissible(mesh1d, snew, mesh1d.b)
         s[:] = snew[:] # in-place copy
         return negd
