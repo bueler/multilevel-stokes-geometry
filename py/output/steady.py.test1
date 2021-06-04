@@ -1,3 +1,4 @@
+sweepsonly with smoother "richardson" ...
 mesh: base of 8 elements (intervals)
       extruded has 6 x 4 icy elements and 2 ice-free base elements
       dimensions n_u = 242, n_p = 37
