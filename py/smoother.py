@@ -293,10 +293,12 @@ class SmootherStokes(SmootherObstacleProblem):
             currentr = self.residual(mesh1d, s, ella)
         if self.args.smoother == 'richardson':
             negd = self.richardsonsweep(s, phi, currentr)
-        elif self.args.smoother == 'jacobislow':
-            negd = self.jacobislowsweep(mesh1d, s, ella, phi, currentr)
         elif self.args.smoother == 'gsslow':
             negd = self.gsslowsweep(mesh1d, s, ella, phi, currentr)
+        elif self.args.smoother == 'jacobislow':
+            negd = self.jacobislowsweep(mesh1d, s, ella, phi, currentr)
+        elif self.args.smoother == 'jacobicolor':
+            negd = self.jacobicolorsweep(mesh1d, s, ella, phi, currentr)
         mesh1d.WU += 1
         if self.args.monitor and len(negd) > 0:
             print('      negative diagonal entries: ', end='')
@@ -310,6 +312,32 @@ class SmootherStokes(SmootherObstacleProblem):
         stability criterion argument.)'''
         np.maximum(s - self.args.omega * r, phi, s)
         return []
+
+    def gsslowsweep(self, mesh1d, s, ella, phi, r,
+                    eps=1.0, dump=False):
+        '''Do in-place projected nonlinear Gauss-Seidel smoothing on s(x)
+        where the diagonal entry d_i = F'(s)[psi_i,psi_i] is computed
+        by VERY SLOW finite differencing of expensive residual calculations.
+        If d_i > 0 then
+            s_i <- max(s_i - omega * r_i / d_i, phi_i)
+        but otherwise
+            s_i <- phi_i.'''
+        negd = []
+        for j in range(1, len(s)-1): # loop over interior points
+            sperturb = s.copy()
+            sperturb[j] += eps
+            if dump:
+                self.savestatenextresidual(self.args.o + '_gs_%d.pvd' % j)
+            rperturb = self.residual(mesh1d, sperturb, ella)
+            d = (rperturb[j] - r[j]) / eps
+            if d > 0.0:
+                s[j] = max(s[j] - self.args.omega * r[j] / d, phi[j])
+            else:
+                s[j] = phi[j]
+                negd.append(j)
+            # must recompute residual for s (nonlocal!)
+            r = self.residual(mesh1d, s, ella)
+        return negd
 
     def jacobislowsweep(self, mesh1d, s, ella, phi, r,
                         eps=1.0, dump=False):
@@ -338,28 +366,40 @@ class SmootherStokes(SmootherObstacleProblem):
         s[:] = snew[:] # in-place copy
         return negd
 
-    def gsslowsweep(self, mesh1d, s, ella, phi, r,
-                    eps=1.0, dump=False):
-        '''Do in-place projected nonlinear Gauss-Seidel smoothing on s(x)
+    def jacobicolorsweep(self, mesh1d, s, ella, phi, r,
+                        eps=1.0, dump=False):
+        '''Do in-place projected nonlinear Jacobi smoothing on s(x)
         where the diagonal entry d_i = F'(s)[psi_i,psi_i] is computed
-        by VERY SLOW finite differencing of expensive residual calculations.
+        by SLOW finite differencing of expensive residual calculations
+        using coloring.
         If d_i > 0 then
-            s_i <- max(s_i - omega * r_i / d_i, phi_i)
+            snew_i <- max(s_i - omega * r_i / d_i, phi_i)
         but otherwise
-            s_i <- phi_i.'''
+            snew_i <- phi_i.
+        After snew is completed we do s <- snew.'''
+        thkmax = max(s - self.b)
+        cgoal = 3.0  # coloring every 3 ice thickness, at least
+        c = int(np.ceil(cgoal * thkmax / mesh1d.h))
+        print('      c = %d' % c)
+        snew = self.b.copy() - 1.0  # values are checked below for admissibility
+        snew[0], snew[mesh1d.m+1] = self.b[0], self.b[mesh1d.m+1]
         negd = []
-        for j in range(1, len(s)-1): # loop over interior points
+        for k in range(c):
+            jlist = np.arange(k+1, mesh1d.m+1, c, dtype=int)
             sperturb = s.copy()
-            sperturb[j] += eps
+            for j in jlist:
+                sperturb[j] += eps
             if dump:
-                self.savestatenextresidual(self.args.o + '_gs_%d.pvd' % j)
+                self.savestatenextresidual(self.args.o + '_jacobi_%d.pvd' % j)
             rperturb = self.residual(mesh1d, sperturb, ella)
-            d = (rperturb[j] - r[j]) / eps
-            if d > 0.0:
-                s[j] = max(s[j] - self.args.omega * r[j] / d, phi[j])
-            else:
-                s[j] = phi[j]
-                negd.append(j)
-            # must recompute residual for s (nonlocal!)
-            r = self.residual(mesh1d, s, ella)
+            for j in jlist:
+                d = (rperturb[j] - r[j]) / eps
+                if d > 0.0:
+                    snew[j] = max(s[j] - self.args.omega * r[j] / d, phi[j])
+                else:
+                    snew[j] = phi[j]
+                    negd.append(j)
+        # check on whether coloring scheme hit each node
+        self._checkadmissible(mesh1d, snew, self.b)
+        s[:] = snew[:] # in-place copy
         return negd
