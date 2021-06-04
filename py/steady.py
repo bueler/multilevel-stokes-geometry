@@ -2,9 +2,11 @@
 '''Solve steady-geometry Stokes obstacle problem by a multilevel constraint decomposition method.'''
 
 # TODO:
-#   2. widen the default sheet; consider -domainlength 60.0e3 -domeL 25.0e3
-#   3. implement -smoother jacobicolor with default coloring mode being 3 ice thicknesses
-#   4. copy mg-glaciers/py/mcdn.py and build it out
+#   1. widen the default sheet?; consider -domainlength 60.0e3 -domeL 25.0e3
+#   2. replace meshlevel.py with use of Firedrake interval mesh (requires
+#      new implementation of monotone restriction); this would allow
+#      parallelization
+#   3. copy mg-glaciers/py/mcdn.py and build it out
 
 # RUNS:
 #   actually converges
@@ -12,6 +14,9 @@
 #      with JJ=1,2,3,4,5 and HH=0,10,100;  HH=0 seems as good as any
 #      also sort of works with JJ=6 when HH=100 and -mz 8
 #      also works with -smoother gsslow
+#   uses jacobicolor (faster than jacobislow) and works:
+#      for JJ in 3 4 5 6; do ./steady.py -sweepsonly -monitor -omega 0.7 -Hmin 20.0 -mz 8 -irtol 1.0e-2 -J $JJ; done
+#      but fails to converge for JJ=7
 
 import sys
 import argparse
@@ -37,7 +42,7 @@ inactive set {x | s(x) > b(x)}.
 Solution is by the nonlinear (FAS) extension of the multilevel constraint
 decomposition (MCD) method of Tai (2003), or by sweeps of the smoother.
 
-Initial implementation generates Bueler profile geometry as initial state
+Initial implementation generates a dome geometry on a flat bed as initial state
 and then tries to converge from there.
 
 References:
