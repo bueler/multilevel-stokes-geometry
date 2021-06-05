@@ -266,10 +266,15 @@ By contrast, in the simpler SIA model the operator is a nonlinear, second-order 
 \end{equation}
 for $\gamma = 2(\rhoi g)^{\nn} (B_\nn)^{-\nn} > 0$ and $\grad_2 = (\partial_x,\partial_y)$.  Thus an FE discretization of $\Phi_{\text{SIA}}(s)$ has sparse Jacobian.  However, $\Phi_{\text{SIA}} \approx \Phi$ for shallow glaciers to the degree that the lubrication approximation \cite{Acheson1990} is valid.
 
+We will be concerned with three aspects of the IDO:
+\renewcommand{\labelenumi}{(\emph{\roman{enumi}})}
+\begin{enumerate}
+\item Immediately we use $\Phi$ to simplify the SIGP strong form and express its weak form.
+\item Section \ref{sec:smoothers} approximates the diagonal entries of the Jacobian $\Phi'$ to construct smoothers.
+\item Section \ref{sec:evolution} relates the spectrum of $\Phi'$ to the stability of time-stepping methods.
+\end{enumerate}
 
-FIXME THREE IDO REASONS TO CARE: EXPRESS STRONG AND WEAK FORM, DIAGONAL OF IDO UNKNOWN BUT POSITIVE? IN SMOOTHER, SPECTRUM OF IDO DETERMINES STABILITY OF TIME-STEPPING
-
-Now we may re-write \eqref{eq:strongform} more simply as an NCP with a hidden dynamical problem:
+For (\emph{i}) we re-write \eqref{eq:strongform} as a simpler NCP with a hidden dynamical problem:
 \begin{align}
 s - b &\ge 0  \label{eq:idostrongform} \\
 \Phi(s) - a &\ge 0 \notag \\
