@@ -197,7 +197,7 @@ s - b &\ge 0 && \text{on $\Omega$} & \tikzmark{ncptop} \\
 \begin{frame}{coupling via operator}
 
 \begin{block}{definition: ice dynamics operator}
-$\Phi : s \mapsto \bus \cdot \bn_s$
+$\Phi : s \mapsto - \bus \cdot \bn_s$
 
 \vspace{-3mm}
 
@@ -206,12 +206,12 @@ $\Phi : s \mapsto \bus \cdot \bn_s$
 
 \begin{itemize}
 \item to compute $\Phi(s)$: build $\Lambda_s$, solve weak-form Stokes problem
-    $$F_{\Lambda_s}(\bu,p)[\bv,q] = \int_{\Lambda_s} 2 \nu_\eps D\bu : D\bv - p \Div\bv - (\Div\bu) q - \rhoi \bg \cdot \bv\,d\bx = 0$$
-
+    $$F_{\Lambda_s}(\bu,p)[\bv,q] = \int_{\Lambda_s} 2 \nu_\eps D\bu : D\bv - p \Div\bv - (\Div\bu) q - \rhoi \bg \cdot \bv\,d\bx = 0,$$
+extract trace $\bus$, then extend $\Phi(s) = -\bus \cdot \bn_s$ by zero to $\Omega$
+\item regarding $F_{\Lambda_s}(\bu,p) = 0$:
     \begin{itemize}
     \item well-posed over $W_0^{1,\pp}(\Lambda_s)^3 \times L^\qq(\Lambda_s)$ (Jouvet \& Rappaz \cite{JouvetRappaz2011})
     \item optimal solver exists (Isaac et al \cite{IsaacStadlerGhattas2015})
-    \item extract trace $\bus$, then $\Phi(s) = \bus \cdot \bn_s$, extend by zero to all of $\Omega$
     \end{itemize}
 \end{itemize}
 
@@ -224,8 +224,8 @@ $\Phi : s \mapsto \bus \cdot \bn_s$
 \item using $\Phi$ gives a cleaner NCP over $\Omega$:
 \begin{align*}
 s - b &\ge 0 \\
-- \Phi(s) - a &\ge 0 \\
-(s - b) (- \Phi(s) - a) &= 0
+\Phi(s) - a &\ge 0 \\
+(s - b) (\Phi(s) - a) &= 0
 \end{align*}
 
 \item NCP (strong form) $\leftrightarrow$ VI (weak form)
@@ -233,12 +233,12 @@ s - b &\ge 0 \\
 \begin{block}{SIGP weak form}
 find admissible $s \in \mathcal{K} = \{r \ge b\} \subset W^{1,\qq}(\Omega)$ so that
     $$\hspace{10mm} F(s)[r - s] \ge \ip{a}{r-s}$$
-for all $r \in \mathcal{K}$, where $F(s)[w] = - \int_\Omega \Phi(s)\, w \,dx dy$
+for all $r \in \mathcal{K}$, where $F(s)[w] = \int_\Omega \Phi(s)\, w \,dx dy$
 \end{block}
 
-\item well-posedness is open
+\item well-posedness is completely open
     \begin{itemize}
-    \item existence holds for SIA version (Jouvet \& Bueler \cite{JouvetBueler2012})
+    \item but existence holds for SIA version (Jouvet \& Bueler \cite{JouvetBueler2012})
     \end{itemize}
 
 \end{itemize}
@@ -249,7 +249,7 @@ for all $r \in \mathcal{K}$, where $F(s)[w] = - \int_\Omega \Phi(s)\, w \,dx dy$
 \begin{frame}{goal: robust and optimal SIGP solver}
 
 \begin{block}{numerical goal}
-Given triangulation $\mathcal{T}$ of $\Omega$ and $P_1$ space $\mathcal{V}^h \subset W^{1,\qq}(\Omega)$.  Use the numerical solution of the Stokes problem $F_{\Lambda_{s^h}}(\bu^h,p^h)=0$ to evaluate $\Phi(s^h)=\bu|_{s^h}\cdot\bn_{s^h}$.  Solve VI for $s^h \in \mathcal{K}^h$:
+Given triangulation $\mathcal{T}$ of $\Omega$ and $P_1$ space $\mathcal{V}^h \subset W^{1,\qq}(\Omega)$.  Use the numerical solution of the Stokes problem $F_{\Lambda_{s^h}}(\bu^h,p^h)=0$ to evaluate $\Phi(s^h)=-\bu|_{s^h}\cdot\bn_{s^h}$.  Solve VI for $s^h \in \mathcal{K}^h$:
 
 $$F(s^h)[r^h - s^h] \ge \ip{a}{r^h-s^h} \qquad \text{for all $r^h \in \mathcal{K}^h$}$$
 \end{block}
@@ -276,16 +276,16 @@ find $s \in \mathcal{K}$ so $F(s)[r - s] \ge \ip{a}{r-s}$ for all $r \in \mathca
 \end{block}
 
 \begin{itemize}
-\item $F(s)[w] = - \int_\Omega \Phi(s)\, w$ is basically dual of $\Phi(s)=\bus\cdot\bn_s$
+\item $F(s)[w] = \int_\Omega \Phi(s)\, w$ is dual of $\Phi(s)=-\bus\cdot\bn_s$
 \item $\Phi : \mathcal{K} \subset W^{1,\qq}(\Omega) \to W^{-1,\pp}(\Omega)$
 \item the Stokes stress balance is nonlocal so $\Phi$ is ``dense''
     \begin{itemize}
-    \item some kind of integral operator (\emph{convolve with Stokeslets})
-    \item $\Phi$ is concentrated near the diagonal, i.e.~short range
+    \item some kind of integral operator (\emph{convolve with bdry Stokeslets})
+    \item $\Phi$ is concentrated near the diagonal, i.e.~short range?
     \end{itemize}
-\item yet it is a differential operator in the SIA case:
+\item $\Phi \approx \Phi_{\text{SIA}}$ for shallow glaciers, a differential operator:
 \small
-    $$\Phi_{\text{SIA}}(s) = \frac{\gamma}{\qq} (s-b)^{\qq} |\grad_2 s|^{\qq} + \grad_2 \cdot\left[\frac{\gamma}{\qq+1} (s-b)^{\qq+1} |\grad_2 s|^{\qq-2} \grad_2 s\right]$$
+    $$\Phi_{\text{SIA}}(s) = - \frac{\gamma}{\qq} (s-b)^{\qq} |\grad_2 s|^{\qq} - \grad_2 \cdot\left[\frac{\gamma}{\qq+1} (s-b)^{\qq+1} |\grad_2 s|^{\qq-2} \grad_2 s\right]$$
 \normalsize
 \end{itemize}
 \end{frame}
