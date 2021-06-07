@@ -48,12 +48,11 @@ class SmootherObstacleProblem(ABC):
         return mesh.l2norm(F)
 
     def smoother(self, iters, mesh, w, ell, phi):
-        '''Apply iters sweeps of obstacle-problem smoother on mesh to modify w in place.  Alternate directions (unless overridden).'''
+        '''Apply iters sweeps of obstacle-problem smoother on mesh to modify w in place.  Alternate directions.'''
         forward = True
         for _ in range(iters):
             self.smoothersweep(mesh, w, ell, phi, forward=forward)
-            if not self.args.sweepsnotalternate:
-                forward = not forward
+            forward = not forward
 
     @abstractmethod
     def residual(self, mesh, w, ell):
