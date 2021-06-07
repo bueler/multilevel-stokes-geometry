@@ -106,6 +106,8 @@ urlcolor=black    % ...
 
 \author{Lawrence Mitchell}
 
+\date{\today}
+
 \begin{abstract} FIXME MCD for steady and evolving geometry with Glen-Stokes dynamics
 \end{abstract}
 
@@ -118,7 +120,7 @@ urlcolor=black    % ...
 
 \section{Introduction} \label{sec:intro}
 
-FIXME MCD = multilevel constraint decomposition, a multigrid \cite{Trottenbergetal2001} method basically by \cite{Tai2003} for obstacle problems; see \cite{Bueler2022};  obstacle problem view first extended to Stokes by \cite{WirbelJarosch2020};  The computations in this paper use the Python FE library Firedrake \cite{Rathgeberetal2016}, which applies an embedded domain language \cite{Alnaesetal2014} to convert weak forms into discrete equations which are solved in parallel using the PETSc \cite{Balayetal2020} library.
+FIXME a multigrid \cite{Trottenbergetal2001} method basically by \cite{Tai2003} for obstacle problems; see \cite{Bueler2022} and \cite{GraeserKornhuber2009};  obstacle problem view first extended to Stokes by \cite{WirbelJarosch2020}
 
 
 \section{The steady ice geometry problem} \label{sec:stokesgeometry}
@@ -466,7 +468,7 @@ In words, we approximate the Glen-Stokes solution $\bu_\eps^h,p_\eps^h$ for the 
 
 \begin{figure}[t]
 \begin{center}
-FIXME %\includegraphics[width=\textwidth]{genfigs/extruded.pdf}
+FIXME %\includegraphics[width=\textwidth]{genfigs/massanalogy.pdf}
 \end{center}
 \caption{A sketch of the mass-perturbation approximation in equations \eqref{eq:systemmassanalogy} and \eqref{eq:massanalogy}.}
 \label{fig:massanalogy}
@@ -621,22 +623,23 @@ As shown in Pseudocode \ref{pc:mcdn-solver}, we iterate MCDN V-cycles until the 
 
 \begin{pcode}[ht]
 \begin{pseudo*}
-\pr{mcdn-solver}(J,s^J,b^J,\id{atol}=10^{-20},\id{rtol}=10^{-3},\id{cyclemax}=100)\text{:} \\+
+\pr{mcdn-solver}(J,s^J,b^J,\id{atol}=10^{-20},\id{rtol}=10^{-3},\id{stol}=10^{-20},\id{max}=100)\text{:} \\+
     $\rho_0=\vertiii{(a,\cdot) - F^J(s^J)[\cdot]}_{(s^J,b^J)}$ \\
     for $k=1,\dots,\id{cyclemax}$ \\+
-        $s^J \gets s^J + \pr{mcdn-vcycle}(J,s^J,b^J)$ \\
+        $z^J = \pr{mcdn-vcycle}(J,s^J,b^J)$ \\
+        $s^J \gets s^J + z^J$ \\
         $\rho_k=\vertiii{(a,\cdot) - F^J(s^J)[\cdot]}_{(s^J,b^J)}$ \\
-        if $\rho_k < \id{atol}$ or $\rho_k \le \id{rtol} \, \rho_0$ \\+
+        if $\rho_k < \id{atol}$ or $\rho_k \le \id{rtol} \, \rho_0$ or $\|z^J\| \le \id{stol}$ \\+
             break \\--
 \end{pseudo*}
-\caption{The SIGP is solved by iterating V-cycles (Pseudocode \ref{pc:mcdn-vcycle}) until the CP residual norm \eqref{eq:cpnorm} is small.}
+\caption{The SIGP is solved in-place by iterating V-cycles (Pseudocode \ref{pc:mcdn-vcycle}) until the CP residual norm \eqref{eq:cpnorm} is small.}
 \label{pc:mcdn-solver}
 \end{pcode}
 
 
 \section{Results for steady geometry} \label{sec:results}
 
-FIXME in this paper the Glen-Stokes problem is solved by Newton linearization and (parallel) direct solution of the Newton step equations; Firedrake and PETSc \cite{Balayetal2020,Bueler2021} used to solve this dynamics problem and thereby evaluate the residual $F$; geometric multigrid schemes exist for the  Glen-Stokes problem \cite{IsaacStadlerGhattas2015}; see also \cite{BrownSmithAhmadia2013} and \cite{Tuminaroetal2016} which solve a first-order approximation of the Glen-Stokes ice sheet problem by geometric and algebraic multigrid, respectively
+FIXME The computations in this section use the Python FE library Firedrake \cite{Rathgeberetal2016}, which applies an embedded domain language \cite{Alnaesetal2014} to convert weak forms into discrete equations which are solved in parallel using the PETSc \cite{Balayetal2020} library.  Each time the smoother is applied the Glen-Stokes problem is solved, by Newton linearization and (parallel) direct solution of the Newton step equations, in order to evaluate the IDO $\Phi(s)$.  To replace this non-scalable approach we propose in future work to apply existing geometric \cite{BrownSmithAhmadia2013,IsaacStadlerGhattas2015} and algebraic \cite{Tuminaroetal2016} multigrid strategies.
 
 FIXME convergence results; scaling results
 
@@ -646,7 +649,7 @@ FIXME convergence results; scaling results
 FIXME time-dependent runs
 
 
-\section*{Acknowledgments}  Thanks to David Maxwell for discussions regarding the formulation and well-posedness of the model.
+\section*{Acknowledgments}  Thanks to David Maxwell for discussions regarding the formulation of the model.
 
 \small
 
