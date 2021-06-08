@@ -147,7 +147,7 @@ if args.sweepsonly:
 else:
     print('MCDN with smoother "%s" ...' % args.smoother)
 r = smooth.residual(finemesh, s, ella)  # generates file if -o above
-normF0 = smooth.inactiveresidualnorm(finemesh, s, r, finemesh.b)
+normF0 = smooth.inactiveresidualnorm(finemesh, s, r)
 if args.monitor:
     print('   0: %.4e' % normF0)
 for j in range(args.cyclemax):
