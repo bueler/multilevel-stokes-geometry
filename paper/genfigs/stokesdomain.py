@@ -67,7 +67,7 @@ offset = 0.1
 xl, xr = min(x[s>b]), max(x[s>b])
 dx = xr - xl
 xsc = (x[s>b] - xl) / dx
-y = s[s>b] + offset + 0.8 * np.sin(5.0*np.pi*xsc) * np.cos(np.pi*xsc)**4
+y = s[s>b] - offset + 1.2 * np.sin(5.5*np.pi*xsc) * np.cos(np.pi*xsc)**4
 plt.plot(x[s>b], y, color='k', lw=1.0)
 plt.plot(x[x < xl], s[x < xl] + offset, color='k', lw=1.0)
 plt.plot(x[x > xr], s[x > xr] + offset, color='k', lw=1.0)
