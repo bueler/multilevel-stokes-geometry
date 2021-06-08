@@ -366,28 +366,27 @@ class SmootherStokes(SmootherObstacleProblem):
         return negd
 
     def jacobicolorsweep(self, mesh1d, s, ella, r,
-                        eps=1.0, dump=False):
+                        eps=1.0, dump=False, cperthickness=3.0):
         '''Do in-place projected nonlinear Jacobi smoothing on s(x)
         where the diagonal entry d_i = F'(s)[psi_i,psi_i] is computed
-        by SLOW finite differencing of expensive residual calculations
-        using coloring.
+        by SLOW finite differencing of expensive residual calculations, but
+        using coloring.  Nodes of the same color are separated by cperthickness
+        times the maximum ice thickness.
         If d_i > 0 then
             snew_i <- max(s_i - omega * r_i / d_i, b_i)
         but otherwise
             snew_i <- b_i.
         After snew is completed we do s <- snew.'''
         thkmax = max(s - mesh1d.b)
-        cgoal = 3.0  # coloring every 3 ice thickness, at least
-        c = int(np.ceil(cgoal * thkmax / mesh1d.h))
+        c = int(np.ceil(cperthickness * thkmax / mesh1d.h))
         print('      c = %d' % c)
-        snew = mesh1d.b.copy() - 1.0  # check below for admissibility
+        snew = mesh1d.b.copy() - 1.0  # snew NOT admissible; note check below
         snew[0], snew[mesh1d.m+1] = mesh1d.b[0], mesh1d.b[mesh1d.m+1]
         negd = []
         for k in range(c):
             jlist = np.arange(k+1, mesh1d.m+1, c, dtype=int)
             sperturb = s.copy()
-            for j in jlist:
-                sperturb[j] += eps
+            sperturb[jlist] += eps
             if dump:
                 self.savestatenextresidual(self.args.o + '_jacobi_%d.pvd' % j)
             rperturb = self.residual(mesh1d, sperturb, ella)
