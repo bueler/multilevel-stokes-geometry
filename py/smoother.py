@@ -1,211 +1,60 @@
 '''Module for SmootherStokes class derived from SmootherObstacleProblem.'''
 
 import numpy as np
-import firedrake as fd
-from basesmoother import SmootherObstacleProblem
-from problem import secpera, g, rhoi, nglen, B3
 
-def extend(mesh, f):
-    '''On an extruded mesh extend a function f(x,z), already defined on the
-    base mesh, to the mesh using the 'R' constant-in-the-vertical space.'''
-    Q1R = fd.FunctionSpace(mesh, 'P', 1, vfamily='R', vdegree=0)
-    fextend = fd.Function(Q1R)
-    fextend.dat.data[:] = f.dat.data_ro[:]
-    return fextend
+class SmootherObstacleProblem:
+    '''A smoother on an obstacle problem.  Works on a mesh of class MeshLevel1D.'''
 
-def D(w):
-    return 0.5 * (fd.grad(w) + fd.grad(w).T)
-
-class SmootherStokes(SmootherObstacleProblem):
-    '''Smoother for solving the steady-geometry Stokes problem.  Generates an
-    extruded mesh for each residual evaluation.  Implements projected
-    nonlinear versions of the Richardson and Jacobi smoothers.'''
-
-    def __init__(self, args, admissibleeps=1.0e-10):
-        super().__init__(args, admissibleeps=admissibleeps)
-        # smoother name
-        self.name = 'SmootherStokes'
-        # used in Stokes solver
-        self.Dtyp = 1.0 / secpera        # s-1
-        self.sc = 1.0e-7                 # velocity scale for symmetric scaling
-        # we store the basemesh info and the bed elevation
-        self.basemesh = None
-        self.mx = None
+    def __init__(self, args, solver, admissibleeps=1.0e-10):
+        self.args = args
+        self.solver = solver
+        self.admissibleeps = admissibleeps
+        self.created = False
         self.saveflag = False
-        self.savename = None
+
+    def _checkadmissible(self, mesh1d, w, phi):
+        '''Check admissibility and stop if not.'''
+        for p in range(1, mesh1d.m+1):
+            if w[p] < phi[p] - self.admissibleeps:
+                print('ERROR: inadmissible w[%d]=%e < phi[%d]=%e (m=%d)' \
+                      % (p, w[p], p, phi[p], mesh1d.m))
+                sys.exit(0)
+
+    def _sweepindices(self, mesh1d, forward=True):
+        '''Generate indices for sweep.'''
+        if forward:
+            ind = range(1, mesh1d.m+1)    # 1,...,m
+        else:
+            ind = range(mesh1d.m, 0, -1)  # m,...,1
+        return ind
+
+    def shownonzeros(self, z):
+        '''Print a string indicating locations where array z is zero.'''
+        Jstr = ''
+        for k in range(len(z)):
+            Jstr += '_' if z[k] == 0.0 else '*'
+        print('  %d nonzeros: ' % sum(z > 0.0) + Jstr)
+
+    def inactiveresidualnorm(self, mesh1d, s, r, b, ireps=0.001):
+        '''Compute the norm of the residual values at nodes where the constraint
+        is NOT active.  Where the constraint is active the residual r=F(s) in
+        the complementarity problem is allowed to have any positive value;
+        only the residual at inactive nodes is relevant to convergence.'''
+        F = r.copy()
+        F[s < b + ireps] = np.minimum(F[s < b + ireps], 0.0)
+        return mesh1d.l2norm(F)
+
+    def smoother(self, iters, mesh1d, s, ell, b):
+        '''Apply iters sweeps of smoother to modify s in place.  Alternate directions.'''
+        forward = True
+        for _ in range(iters):
+            self.smoothersweep(mesh1d, s, ell, b, forward=forward)
+            forward = not forward
 
     def savestatenextresidual(self, name):
         '''On next call to residual(), save the state.'''
         self.saveflag = True
         self.savename = name
-
-    def _regDu2(self, u):
-        reg = self.args.eps * self.Dtyp**2
-        return 0.5 * fd.inner(D(u), D(u)) + reg
-
-    def stresses(self, mesh, u):
-        ''' Generate effective viscosity and tensor-valued deviatoric stress
-        from the velocity solution.'''
-        Q1 = fd.FunctionSpace(mesh,'Q',1)
-        Du2 = self._regDu2(u)
-        r = 1.0 / nglen - 1.0
-        assert nglen == 3.0
-        nu = fd.Function(Q1).interpolate(0.5 * B3 * Du2**(r/2.0))
-        nu.rename('effective viscosity (Pa s)')
-        TQ1 = fd.TensorFunctionSpace(mesh, 'Q', 1)
-        tau = fd.Function(TQ1).interpolate(2.0 * nu * D(u))
-        tau /= 1.0e5
-        tau.rename('tau (bar)')
-        return nu, tau
-
-    def savestate(self, mesh, u, p, kres):
-        ''' Save state and diagnostics into .pvd file.'''
-        assert self.saveflag == True
-        assert self.savename is not None
-        assert len(self.savename) > 0
-        nu, tau = self.stresses(mesh, u)
-        u *= secpera
-        u.rename('velocity (m a-1)')
-        p /= 1.0e5
-        p.rename('pressure (bar)')
-        kres.rename('kinematic residual (a=0)')
-        print('saving u,p,nu,tau,kres to %s' % self.savename)
-        fd.File(self.savename).write(u,p,nu,tau,kres)
-        self.saveflag = False
-        self.savename = None
-
-    def solvestokes(self, mesh, printsizes=False):
-        '''Solve the Glen-Stokes problem on the input extruded mesh.
-        Returns the separate velocity and pressure solutions.'''
-
-        # set up mixed method for Stokes dynamics problem
-        V = fd.VectorFunctionSpace(mesh, 'Lagrange', 2)
-        W = fd.FunctionSpace(mesh, 'Lagrange', 1)
-        if printsizes:
-            print('      dimensions n_u = %d, n_p = %d' % (V.dim(), W.dim()))
-        Z = V * W
-        up = fd.Function(Z)
-        scu, p = fd.split(up)       # scaled velocity, unscaled pressure
-        v, q = fd.TestFunctions(Z)
-
-        # symmetrically-scaled Glen-Stokes weak form
-        fbody = fd.Constant((0.0, - rhoi * g))
-        sc = self.sc
-        Du2 = self._regDu2(scu * sc)
-        assert nglen == 3.0
-        nu = 0.5 * B3 * Du2**((1.0 / nglen - 1.0)/2.0)
-        F = ( sc*sc * fd.inner(2.0 * nu * D(scu), D(v)) \
-              - sc * p * fd.div(v) - sc * q * fd.div(scu) \
-              - sc * fd.inner(fbody, v) ) * fd.dx
-
-        # zero Dirichlet on base (and stress-free on top and cliffs)
-        bcs = [ fd.DirichletBC(Z.sub(0), fd.Constant((0.0, 0.0)), 'bottom')]
-
-        # Newton-LU solve Stokes, split, descale, and return
-        par = {'snes_linesearch_type': 'bt',
-               'snes_max_it': 200,
-               'snes_rtol': 1.0e-4,    # not as tight as default 1.0e-8
-               'snes_stol': 0.0,       # expect CONVERGED_FNORM_RELATIVE
-               'ksp_type': 'preonly',
-               'pc_type': 'lu',
-               'pc_factor_shift_type': 'inblocks'}
-        fd.solve(F == 0, up, bcs=bcs, options_prefix='s', solver_parameters=par)
-        u, p = up.split()
-        u *= sc
-        return u, p
-
-    def createbasemesh(self, mesh1d):
-        '''Create a Firedrake interval base mesh matching mesh1d.  Also store
-        the bed elevation.'''
-        self.mx = mesh1d.m + 1
-        self.basemesh = fd.IntervalMesh(self.mx, length_or_left=0.0,
-                                        right=mesh1d.xmax)
-
-    def extrudetogeometry(self, s, b, report=False):
-        '''Generate extruded mesh over self.basemesh, to height s.  The icy
-        columns get their height from s, with minimum height args.Hmin.  By
-        default the extruded mesh has empty (0-element) columns if ice-free
-        according to s.  If args.padding==True then the whole extruded mesh has
-        the same layer count.  Optional reporting of mesh stats.'''
-        assert self.basemesh is not None
-        if report:
-            print('mesh: base of %d elements (intervals)' \
-                  % self.mx)
-        # extrude to temporary total height 1.0
-        mz = self.args.mz
-        if self.args.padding:
-            assert self.args.Hmin > 0.0, \
-                'padding requires minimum positive thickness'
-            mesh = fd.ExtrudedMesh(self.basemesh, mz, layer_height=1.0 / mz)
-            if report:
-                print('      extruded is padded, has %d x %d elements' \
-                      % (self.mx, mz))
-        else:
-            layermap = np.zeros((self.mx, 2), dtype=int)  # [[0,0], ..., [0,0]]
-            thk = s - b
-            thkelement = ( (thk[:-1]) + (thk[1:]) ) / 2.0
-            icyelement = (thkelement > self.args.Hmin + 1.0e-3)
-            layermap[:,1] = mz * np.array(icyelement, dtype=int)
-            # FIXME: in parallel we must provide local, haloed layermap
-            mesh = fd.ExtrudedMesh(self.basemesh, layers=layermap,
-                                   layer_height=1.0 / mz)
-            if report:
-                icycount = sum(icyelement)
-                print('      extruded has %d x %d icy elements and %d ice-free base elements' \
-                      % (icycount, mz, self.mx - icycount))
-        # put s(x) into a Firedrake function on the base mesh
-        P1base = fd.FunctionSpace(self.basemesh, 'Lagrange', 1)
-        sbase = fd.Function(P1base)
-        sbase.dat.data[:] = np.maximum(s, self.args.Hmin)
-        # change mesh height to s(x)
-        x, z = fd.SpatialCoordinate(mesh)
-        # FIXME next line needs modification if b!=0
-        xxzz = fd.as_vector([x, extend(mesh, sbase) * z])
-        coords = fd.Function(mesh.coordinates.function_space())
-        mesh.coordinates.assign(coords.interpolate(xxzz))
-        return mesh
-
-    def extracttop(self, mesh1d, mesh, field):
-        '''On an extruded mesh with some ice-free (i.e. empty) columns, loop
-        over the base mesh finding top cells where ice is present, then top
-        nodes, and evaluate the field there.  Only works for Q1 fields.
-        (Thanks Lawrence Mitchell.)'''
-        assert self.basemesh is not None
-        # get the cells from basemesh and mesh
-        bmP1 = fd.FunctionSpace(self.basemesh, 'Lagrange', 1)
-        bmcnm = bmP1.cell_node_map().values
-        Q1 = fd.FunctionSpace(mesh, 'Lagrange', 1)
-        cnm = Q1.cell_node_map().values
-        coff = Q1.cell_node_map().offset  # node offset in column
-        # get the cell-wise indexing scheme
-        section, iset, facets = Q1.cell_boundary_masks
-        # facets ordered with sides first, then bottom, then top
-        off = section.getOffset(facets[-1])
-        dof = section.getDof(facets[-1])
-        topind = iset[off:off+dof]  # nodes on top of a cell
-        assert len(topind) == 2
-        # loop over base mesh cells computing top-node field value
-        f = mesh1d.zeros()
-        for cell in range(self.basemesh.cell_set.size):
-            start, extent = mesh.cell_set.layers_array[cell]
-            ncell = extent - start - 1
-            if ncell == 0:
-                continue  # leave r unchanged for these base mesh nodes
-            topcellnodes = cnm[cell, ...] + coff * ncell - 1
-            f_all = field.dat.data_ro[topcellnodes] # at ALL nodes in top cell
-            f[bmcnm[cell,...]] = f_all[topind]
-        return f
-
-    def kinematical(self, mesh, u):
-        ''' Evaluate kinematic part of residual from given velocity u, namely
-        as a field defined on the whole extruded mesh:
-            kres = u ds/dx - w.
-        Note n_s = <-s_x, 1> so this is <u,w> . n_s.'''
-        _, z = fd.SpatialCoordinate(mesh)
-        kres_ufl = u[0] * z.dx(0) - u[1]
-        Q1 = fd.FunctionSpace(mesh, 'Lagrange', 1)
-        kres = fd.Function(Q1).interpolate(kres_ufl)
-        return kres
 
     def residual(self, mesh1d, s, ella):
         '''Compute the residual functional, namely the surface kinematical
@@ -217,69 +66,29 @@ class SmootherStokes(SmootherObstacleProblem):
         (stored) base mesh.  If saveupname is a string then the Stokes
         solution (u,p) is saved to that file.  The returned residual array is
         defined on mesh1d and is in the dual space V^j'.'''
-        firstcall = (self.basemesh == None)
-        if firstcall: # if needed, generate self.basemesh from mesh1d
-            self.createbasemesh(mesh1d)
+        # set up base mesh (if needed) and extruded mesh
+        if not self.created:
+            self.solver.createbasemesh(mx=mesh1d.m+1, xmax=mesh1d.xmax)
+        mesh = self.solver.extrudetogeometry(s, mesh1d.b,
+                                             report=not self.created)
         # solve the Glen-Stokes problem on the extruded mesh
-        mesh = self.extrudetogeometry(s, mesh1d.b, report=firstcall)
-        u, p = self.solvestokes(mesh, printsizes=firstcall)
+        u, p = self.solver.solve(mesh, printsizes=not self.created)
+        if not self.created:
+            self.created = True
         # get kinematical part of residual
-        kres = self.kinematical(mesh, u)
+        kres = self.solver.kinematical(mesh, u)
         if self.saveflag:
-            self.savestate(mesh, u, p, kres)
+            self.solver.savestate(mesh, u, p, kres, savename=self.savename)
+            self.saveflag = False
         # get kinematic residual r = - u|_s . n_s on z = s(x)
         if self.args.padding:
             # in this case the 'top' BC nodes are all we need
-            topbc = fd.DirichletBC(Q1, 1.0, 'top')
-            r = kres.dat.data_ro[topbc.nodes]
+            r = self.solver.extracttopdirichlet(mesh, kres)
         else:
             # if some columns are ice-free then nontrivial extraction needed
-            r = self.extracttop(mesh1d, mesh, kres)
+            r = self.solver.extracttop(mesh, kres)
         # include the climatic mass balance: - u|_s . n_s - a
         return mesh1d.ellf(r) - ella
-
-    def viewperturb(self, s, klist, eps=1.0):
-        '''For given s(x), compute solution perturbations from s[k] + eps,
-        i.e. lifting surface by eps, at an each icy interior node in klist.
-        Saves du,dp,dres to file self.savename, a .pvd file.'''
-        assert self.basemesh is not None
-        assert self.savename is not None
-        assert len(self.savename) > 0
-        # solve the Glen-Stokes problem on the unperturbed extruded mesh
-        meshs = self.extrudetogeometry(s)
-        us, ps = self.solvestokes(meshs)
-        kress = self.kinematical(meshs, us)
-        # solve on the PERTURBED extruded mesh
-        sP = s.copy()
-        for k in klist:
-            if k < 1 or k > len(s)-2:
-                print('WARNING viewperturb(): skipping non-interior node k=%d' \
-                      % k)
-            elif s[k] > mesh1d.b[k] + 0.001:
-                sP[k] += eps
-            else:
-                print('WARNING viewperturb(): skipping bare-ground node k=%d' \
-                      % k)
-        meshP = self.extrudetogeometry(sP)
-        uP, pP = self.solvestokes(meshP)
-        kresP = self.kinematical(meshP, uP)
-        # compute difference as a function on the unperturbed mesh
-        V = fd.VectorFunctionSpace(meshs, 'Lagrange', 2)
-        W = fd.FunctionSpace(meshs, 'Lagrange', 1)
-        du = fd.Function(V)
-        du.dat.data[:] = uP.dat.data_ro[:] - us.dat.data_ro[:]
-        du *= secpera
-        du.rename('du (m a-1)')
-        dp = fd.Function(W)
-        dp.dat.data[:] = pP.dat.data_ro[:] - ps.dat.data_ro[:]
-        dp /= 1.0e5
-        dp.rename('dp (bar)')
-        # dres is difference of full residual cause a(x) cancels
-        dres = fd.Function(W)
-        dres.dat.data[:] = kresP.dat.data_ro[:] - kress.dat.data_ro[:]
-        dres.rename('dres')
-        print('saving perturbations du,dp,dres to %s' % self.savename)
-        fd.File(self.savename).write(du,dp,dres)
 
     def smoothersweep(self, mesh1d, s, ella, currentr=None):
         '''Do in-place smoothing on s(x).  On input, set currentr to a vector

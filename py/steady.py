@@ -25,7 +25,8 @@ from firedrake import *
 
 from meshlevel import MeshLevel1D
 from problem import IceProblem
-from smoother import SmootherStokes
+from stokes import GlenStokes
+from smoother import SmootherObstacleProblem
 from mcdn import mcdnvcycle
 from visualize import showiteratecmb
 
@@ -133,8 +134,8 @@ else:
 ella = finemesh.ellf(problem.source(finemesh.xx()))  # source ell[v] = <a,v>
 s = problem.initial(finemesh.xx())
 
-# set-up smoother
-smooth = SmootherStokes(args)
+# set-up smoother with included Stokes solver
+smooth = SmootherObstacleProblem(args, GlenStokes(args))
 
 # generate .pvd file with initial state (see first residual())
 if args.o:
@@ -173,8 +174,8 @@ if args.o:
     smooth.savestatenextresidual(args.o + '_%d.pvd' % (j+1))
     smooth.residual(finemesh, s, ella)  # extra residual call generates file
     if args.viewperturb is not None:
-        smooth.savename = args.o + '_perturb.pvd'
-        smooth.viewperturb(s, args.viewperturb)
+        smooth.solver.viewperturb(s, finemesh.b, args.viewperturb,
+                                  savename=args.o + '_perturb.pvd')
 
 # output an image
 if args.oimage:
