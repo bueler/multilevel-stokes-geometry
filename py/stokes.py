@@ -42,8 +42,7 @@ class GlenStokes:
         _, z = fd.SpatialCoordinate(mesh)
         kres_ufl = u[0] * z.dx(0) - u[1]
         Q1 = fd.FunctionSpace(mesh, 'Lagrange', 1)
-        kres = fd.Function(Q1).interpolate(kres_ufl)
-        return kres
+        return fd.Function(Q1).interpolate(kres_ufl)
 
     def _regDu2(self, u):
         reg = self.args.eps * self.Dtyp**2
