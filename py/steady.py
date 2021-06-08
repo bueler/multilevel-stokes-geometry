@@ -156,7 +156,7 @@ for j in range(args.cyclemax):
     else:
         s += mcdnvcycle(args, smooth, hierarchy, s, ella)
         r = smooth.residual(finemesh, s, ella)  # needed? return it from MCDN?
-    normF = smooth.inactiveresidualnorm(finemesh, s, r, finemesh.b)
+    normF = smooth.inactiveresidualnorm(finemesh, s, r)
     if args.monitor:
         print('%4d: %.4e' % (j+1, normF))
     if normF < args.irtol * normF0:

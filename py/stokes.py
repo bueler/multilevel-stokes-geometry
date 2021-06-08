@@ -16,7 +16,15 @@ def D(w):
     return 0.5 * (fd.grad(w) + fd.grad(w).T)
 
 class GlenStokes:
-    '''Use Firedrake to solve the fixed-geometry Glen-Stokes problem.  Also report certain quantities about the solution.'''
+    '''Use Firedrake to solve the fixed-geometry Glen-Stokes problem.  Also report certain quantities about the solution.  The public interface:
+        stokes = GlenStokes(args)
+        stokes.createbasemesh(...)
+        mesh = stokes.extrudetogeometry(...)
+        u, p, kres = stokes.solve(mesh)
+        r = stokes.extracttop(mesh, kres)
+    There are also two output routines:
+        stokes.savestate(...)
+        stokes.viewperturb(...)'''
 
     def __init__(self, args):
         self.args = args
@@ -26,11 +34,22 @@ class GlenStokes:
         self.basemesh = None
         self.mx = None
 
+    def _kinematical(self, mesh, u):
+        ''' Evaluate kinematic part of residual from given velocity u, namely
+        as a field defined on the whole extruded mesh:
+            kres = u ds/dx - w.
+        Note n_s = <-s_x, 1> so this is <u,w> . n_s.'''
+        _, z = fd.SpatialCoordinate(mesh)
+        kres_ufl = u[0] * z.dx(0) - u[1]
+        Q1 = fd.FunctionSpace(mesh, 'Lagrange', 1)
+        kres = fd.Function(Q1).interpolate(kres_ufl)
+        return kres
+
     def _regDu2(self, u):
         reg = self.args.eps * self.Dtyp**2
         return 0.5 * fd.inner(D(u), D(u)) + reg
 
-    def stresses(self, mesh, u):
+    def _stresses(self, mesh, u):
         ''' Generate effective viscosity and tensor-valued deviatoric stress
         from the velocity solution.'''
         Q1 = fd.FunctionSpace(mesh,'Q',1)
@@ -45,61 +64,45 @@ class GlenStokes:
         tau.rename('tau (bar)')
         return nu, tau
 
-    def savestate(self, mesh, u, p, kres, savename=None):
-        ''' Save state and diagnostics into .pvd file.'''
-        nu, tau = self.stresses(mesh, u)
-        u *= secpera
-        u.rename('velocity (m a-1)')
-        p /= 1.0e5
-        p.rename('pressure (bar)')
-        kres.rename('kinematic residual (a=0)')
-        print('saving u,p,nu,tau,kres to %s' % savename)
-        fd.File(savename).write(u,p,nu,tau,kres)
-
-    def solve(self, mesh, printsizes=False):
-        '''Solve the Glen-Stokes problem on the input extruded mesh.
-        Returns the separate velocity and pressure solutions.'''
-
-        # set up mixed method for Stokes dynamics problem
-        V = fd.VectorFunctionSpace(mesh, 'Lagrange', 2)
-        W = fd.FunctionSpace(mesh, 'Lagrange', 1)
-        if printsizes:
-            print('      dimensions n_u = %d, n_p = %d' % (V.dim(), W.dim()))
-        Z = V * W
-        up = fd.Function(Z)
-        scu, p = fd.split(up)       # scaled velocity, unscaled pressure
-        v, q = fd.TestFunctions(Z)
-
-        # symmetrically-scaled Glen-Stokes weak form
-        fbody = fd.Constant((0.0, - rhoi * g))
-        sc = self.sc
-        Du2 = self._regDu2(scu * sc)
-        assert nglen == 3.0
-        nu = 0.5 * B3 * Du2**((1.0 / nglen - 1.0)/2.0)
-        F = ( sc*sc * fd.inner(2.0 * nu * D(scu), D(v)) \
-              - sc * p * fd.div(v) - sc * q * fd.div(scu) \
-              - sc * fd.inner(fbody, v) ) * fd.dx
-
-        # zero Dirichlet on base (and stress-free on top and cliffs)
-        bcs = [ fd.DirichletBC(Z.sub(0), fd.Constant((0.0, 0.0)), 'bottom')]
-
-        # Newton-LU solve Stokes, split, descale, and return
-        par = {'snes_linesearch_type': 'bt',
-               'snes_max_it': 200,
-               'snes_rtol': 1.0e-4,    # not as tight as default 1.0e-8
-               'snes_stol': 0.0,       # expect CONVERGED_FNORM_RELATIVE
-               'ksp_type': 'preonly',
-               'pc_type': 'lu',
-               'pc_factor_shift_type': 'inblocks'}
-        fd.solve(F == 0, up, bcs=bcs, options_prefix='s', solver_parameters=par)
-        u, p = up.split()
-        u *= sc
-        return u, p
-
     def createbasemesh(self, mx=None, xmax=None):
         '''Create and save the Firedrake base mesh (of intervals).'''
         self.mx = mx
         self.basemesh = fd.IntervalMesh(mx, length_or_left=0.0, right=xmax)
+
+    def extracttop(self, mesh, field):
+        '''On an extruded mesh with some ice-free (i.e. empty) columns, loop
+        over the base mesh finding top cells where ice is present, then top
+        nodes, and evaluate the field there.  On an extruded mesh with padding,
+        just get the top Dirichlet nodes.  Only works for Q1 fields.
+        (Thanks Lawrence Mitchell.)'''
+        assert self.basemesh is not None
+        Q1 = fd.FunctionSpace(mesh, 'Lagrange', 1)
+        if self.args.padding:
+            topbc = fd.DirichletBC(Q1, 1.0, 'top')
+            return field.dat.data_ro[topbc.nodes]
+        # get the cells from basemesh and mesh
+        bmP1 = fd.FunctionSpace(self.basemesh, 'Lagrange', 1)
+        bmcnm = bmP1.cell_node_map().values
+        cnm = Q1.cell_node_map().values
+        coff = Q1.cell_node_map().offset  # node offset in column
+        # get the cell-wise indexing scheme
+        section, iset, facets = Q1.cell_boundary_masks
+        # facets ordered with sides first, then bottom, then top
+        off = section.getOffset(facets[-1])
+        dof = section.getDof(facets[-1])
+        topind = iset[off:off+dof]  # nodes on top of a cell
+        assert len(topind) == 2
+        # loop over base mesh cells computing top-node field value
+        f = np.zeros(self.mx + 1)
+        for cell in range(self.basemesh.cell_set.size):
+            start, extent = mesh.cell_set.layers_array[cell]
+            ncell = extent - start - 1
+            if ncell == 0:
+                continue  # leave r unchanged for these base mesh nodes
+            topcellnodes = cnm[cell, ...] + coff * ncell - 1
+            f_all = field.dat.data_ro[topcellnodes] # at ALL nodes in top cell
+            f[bmcnm[cell,...]] = f_all[topind]
+        return f
 
     def extrudetogeometry(self, s, b, report=False):
         '''Generate extruded mesh over self.basemesh, to height s.  The icy
@@ -145,56 +148,58 @@ class GlenStokes:
         mesh.coordinates.assign(coords.interpolate(xxzz))
         return mesh
 
-    def extracttopdirichlet(self, mesh, field):
-        '''Trivial extraction of top nodes from an extruded mesh.  Will not
-        work if some columns are empty; compare extracttop().'''
-        assert self.basemesh is not None
-        Q1 = fd.FunctionSpace(mesh, 'Lagrange', 1)
-        topbc = fd.DirichletBC(Q1, 1.0, 'top')
-        r = field.dat.data_ro[topbc.nodes]
+    def savestate(self, mesh, u, p, kres, savename=None):
+        ''' Save state and diagnostics into .pvd file.'''
+        nu, tau = self._stresses(mesh, u)
+        u *= secpera
+        u.rename('velocity (m a-1)')
+        p /= 1.0e5
+        p.rename('pressure (bar)')
+        kres.rename('kinematic residual (a=0)')
+        print('saving u,p,nu,tau,kres to %s' % savename)
+        fd.File(savename).write(u,p,nu,tau,kres)
 
-    def extracttop(self, mesh, field):
-        '''On an extruded mesh with some ice-free (i.e. empty) columns, loop
-        over the base mesh finding top cells where ice is present, then top
-        nodes, and evaluate the field there.  Only works for Q1 fields.
-        (Thanks Lawrence Mitchell.)'''
-        assert self.basemesh is not None
-        # get the cells from basemesh and mesh
-        bmP1 = fd.FunctionSpace(self.basemesh, 'Lagrange', 1)
-        bmcnm = bmP1.cell_node_map().values
-        Q1 = fd.FunctionSpace(mesh, 'Lagrange', 1)
-        cnm = Q1.cell_node_map().values
-        coff = Q1.cell_node_map().offset  # node offset in column
-        # get the cell-wise indexing scheme
-        section, iset, facets = Q1.cell_boundary_masks
-        # facets ordered with sides first, then bottom, then top
-        off = section.getOffset(facets[-1])
-        dof = section.getDof(facets[-1])
-        topind = iset[off:off+dof]  # nodes on top of a cell
-        assert len(topind) == 2
-        # loop over base mesh cells computing top-node field value
-        f = np.zeros(self.mx + 1)
-        for cell in range(self.basemesh.cell_set.size):
-            start, extent = mesh.cell_set.layers_array[cell]
-            ncell = extent - start - 1
-            if ncell == 0:
-                continue  # leave r unchanged for these base mesh nodes
-            topcellnodes = cnm[cell, ...] + coff * ncell - 1
-            f_all = field.dat.data_ro[topcellnodes] # at ALL nodes in top cell
-            f[bmcnm[cell,...]] = f_all[topind]
-        return f
+    def solve(self, mesh, printsizes=False):
+        '''Solve the Glen-Stokes problem on the input extruded mesh.
+        Returns the separate velocity and pressure solutions.'''
 
-    def kinematical(self, mesh, u):
-        ''' Evaluate kinematic part of residual from given velocity u, namely
-        as a field defined on the whole extruded mesh:
-            kres = u ds/dx - w.
-        Note n_s = <-s_x, 1> so this is <u,w> . n_s.'''
-        _, z = fd.SpatialCoordinate(mesh)
-        kres_ufl = u[0] * z.dx(0) - u[1]
-        Q1 = fd.FunctionSpace(mesh, 'Lagrange', 1)
-        kres = fd.Function(Q1).interpolate(kres_ufl)
-        return kres
-        return mesh1d.ellf(r) - ella
+        # set up mixed method for Stokes dynamics problem
+        V = fd.VectorFunctionSpace(mesh, 'Lagrange', 2)
+        W = fd.FunctionSpace(mesh, 'Lagrange', 1)
+        if printsizes:
+            print('      dimensions n_u = %d, n_p = %d' % (V.dim(), W.dim()))
+        Z = V * W
+        up = fd.Function(Z)
+        scu, p = fd.split(up)       # scaled velocity, unscaled pressure
+        v, q = fd.TestFunctions(Z)
+
+        # symmetrically-scaled Glen-Stokes weak form
+        fbody = fd.Constant((0.0, - rhoi * g))
+        sc = self.sc
+        Du2 = self._regDu2(scu * sc)
+        assert nglen == 3.0
+        nu = 0.5 * B3 * Du2**((1.0 / nglen - 1.0)/2.0)
+        F = ( sc*sc * fd.inner(2.0 * nu * D(scu), D(v)) \
+              - sc * p * fd.div(v) - sc * q * fd.div(scu) \
+              - sc * fd.inner(fbody, v) ) * fd.dx
+
+        # zero Dirichlet on base (and stress-free on top and cliffs)
+        bcs = [ fd.DirichletBC(Z.sub(0), fd.Constant((0.0, 0.0)), 'bottom')]
+
+        # Newton-LU solve Stokes, split, descale, and return
+        par = {'snes_linesearch_type': 'bt',
+               'snes_max_it': 200,
+               'snes_rtol': 1.0e-4,    # not as tight as default 1.0e-8
+               'snes_stol': 0.0,       # expect CONVERGED_FNORM_RELATIVE
+               'ksp_type': 'preonly',
+               'pc_type': 'lu',
+               'pc_factor_shift_type': 'inblocks'}
+        fd.solve(F == 0, up, bcs=bcs, options_prefix='s', solver_parameters=par)
+
+        # return everything needed post-solve
+        u, p = up.split()
+        u *= sc
+        return u, p, self._kinematical(mesh, u)
 
     def viewperturb(self, s, b, klist, eps=1.0, savename=None):
         '''For given s(x), compute solution perturbations from s[k] + eps,

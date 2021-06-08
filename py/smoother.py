@@ -3,7 +3,23 @@
 import numpy as np
 
 class SmootherObstacleProblem:
-    '''A smoother on an obstacle problem.  Works on a mesh of class MeshLevel1D.'''
+    '''A smoother on an obstacle problem.  Works on a mesh of class MeshLevel1D and calls a solver of class GlenStokes.  Note the mesh holds the bed
+    elevation (obstacle).
+
+    Implements Richardson plus FD Jacobian GS and Jacobi methods.  These
+    methods do not assume the residual functional has an easily-accessible
+    Jacobian or Jacobian diagonal.
+
+    The public interface implements residual evaluation and application of the
+    in-place smoother:
+        smooth = SmootherObstacleProblem(args, solver)
+        r = smooth.residual(mesh1d, s, ella)
+        smooth.smoothersweep(mesh1d, s, ella)
+    There is also evaluation of the CP norm,
+        irnorm = smooth.inactiveresidualnorm(mesh1d, s, r)
+    and a routine to trigger output:
+        smooth.savestatenextresidual(filename)
+    '''
 
     def __init__(self, args, solver, admissibleeps=1.0e-10):
         self.args = args
@@ -28,28 +44,14 @@ class SmootherObstacleProblem:
             ind = range(mesh1d.m, 0, -1)  # m,...,1
         return ind
 
-    def shownonzeros(self, z):
-        '''Print a string indicating locations where array z is zero.'''
-        Jstr = ''
-        for k in range(len(z)):
-            Jstr += '_' if z[k] == 0.0 else '*'
-        print('  %d nonzeros: ' % sum(z > 0.0) + Jstr)
-
-    def inactiveresidualnorm(self, mesh1d, s, r, b, ireps=0.001):
+    def inactiveresidualnorm(self, mesh1d, s, r, ireps=0.001):
         '''Compute the norm of the residual values at nodes where the constraint
         is NOT active.  Where the constraint is active the residual r=F(s) in
         the complementarity problem is allowed to have any positive value;
         only the residual at inactive nodes is relevant to convergence.'''
         F = r.copy()
-        F[s < b + ireps] = np.minimum(F[s < b + ireps], 0.0)
+        F[s < mesh1d.b + ireps] = np.minimum(F[s < mesh1d.b + ireps], 0.0)
         return mesh1d.l2norm(F)
-
-    def smoother(self, iters, mesh1d, s, ell, b):
-        '''Apply iters sweeps of smoother to modify s in place.  Alternate directions.'''
-        forward = True
-        for _ in range(iters):
-            self.smoothersweep(mesh1d, s, ell, b, forward=forward)
-            forward = not forward
 
     def savestatenextresidual(self, name):
         '''On next call to residual(), save the state.'''
@@ -72,21 +74,14 @@ class SmootherObstacleProblem:
         mesh = self.solver.extrudetogeometry(s, mesh1d.b,
                                              report=not self.created)
         # solve the Glen-Stokes problem on the extruded mesh
-        u, p = self.solver.solve(mesh, printsizes=not self.created)
+        u, p, kres = self.solver.solve(mesh, printsizes=not self.created)
         if not self.created:
             self.created = True
-        # get kinematical part of residual
-        kres = self.solver.kinematical(mesh, u)
         if self.saveflag:
             self.solver.savestate(mesh, u, p, kres, savename=self.savename)
             self.saveflag = False
         # get kinematic residual r = - u|_s . n_s on z = s(x)
-        if self.args.padding:
-            # in this case the 'top' BC nodes are all we need
-            r = self.solver.extracttopdirichlet(mesh, kres)
-        else:
-            # if some columns are ice-free then nontrivial extraction needed
-            r = self.solver.extracttop(mesh, kres)
+        r = self.solver.extracttop(mesh, kres)
         # include the climatic mass balance: - u|_s . n_s - a
         return mesh1d.ellf(r) - ella
 
@@ -100,20 +95,20 @@ class SmootherObstacleProblem:
         if currentr is None:
             currentr = self.residual(mesh1d, s, ella)
         if self.args.smoother == 'richardson':
-            negd = self.richardsonsweep(mesh1d, s, ella, currentr)
+            negd = self._richardsonsweep(mesh1d, s, ella, currentr)
         elif self.args.smoother == 'gsslow':
-            negd = self.gsslowsweep(mesh1d, s, ella, currentr)
+            negd = self._gsslowsweep(mesh1d, s, ella, currentr)
         elif self.args.smoother == 'jacobislow':
-            negd = self.jacobislowsweep(mesh1d, s, ella, currentr)
+            negd = self._jacobislowsweep(mesh1d, s, ella, currentr)
         elif self.args.smoother == 'jacobicolor':
-            negd = self.jacobicolorsweep(mesh1d, s, ella, currentr)
+            negd = self._jacobicolorsweep(mesh1d, s, ella, currentr)
         mesh1d.WU += 1
         if self.args.monitor and len(negd) > 0:
             print('      negative diagonal entries: ', end='')
             print(negd)
         return self.residual(mesh1d, s, ella)
 
-    def richardsonsweep(self, mesh1d, s, ella, r):
+    def _richardsonsweep(self, mesh1d, s, ella, r):
         '''Do in-place projected nonlinear Richardson smoothing on s(x):
             s <- max(s - omega * r, b)
         User must adjust omega to reasonable level.  (Do this with SIA-type
@@ -121,7 +116,7 @@ class SmootherObstacleProblem:
         np.maximum(s - self.args.omega * r, mesh1d.b, s)
         return []
 
-    def gsslowsweep(self, mesh1d, s, ella, r,
+    def _gsslowsweep(self, mesh1d, s, ella, r,
                     eps=1.0, dump=False):
         '''Do in-place projected nonlinear Gauss-Seidel smoothing on s(x)
         where the diagonal entry d_i = F'(s)[psi_i,psi_i] is computed
@@ -147,7 +142,7 @@ class SmootherObstacleProblem:
             r = self.residual(mesh1d, s, ella)
         return negd
 
-    def jacobislowsweep(self, mesh1d, s, ella, r,
+    def _jacobislowsweep(self, mesh1d, s, ella, r,
                         eps=1.0, dump=False):
         '''Do in-place projected nonlinear Jacobi smoothing on s(x)
         where the diagonal entry d_i = F'(s)[psi_i,psi_i] is computed
@@ -174,7 +169,7 @@ class SmootherObstacleProblem:
         s[:] = snew[:] # in-place copy
         return negd
 
-    def jacobicolorsweep(self, mesh1d, s, ella, r,
+    def _jacobicolorsweep(self, mesh1d, s, ella, r,
                         eps=1.0, dump=False, cperthickness=3.0):
         '''Do in-place projected nonlinear Jacobi smoothing on s(x)
         where the diagonal entry d_i = F'(s)[psi_i,psi_i] is computed
