@@ -1,0 +1,7 @@
+SWEEPSONLY with smoother "gsslow" ...
+mesh: base has 8 intervals; 2 are ice-free
+      extruded has 6 x 4 icy quad elements
+      dimensions n_u = 242, n_p = 37
+   0: 6.3623e+00
+   1: 1.9517e+00
+iteration CONVERGED at step 1 by F<(5.00e-01)F0

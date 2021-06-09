@@ -1,6 +1,6 @@
 SWEEPSONLY with smoother "jacobicolor" ...
-mesh: base of 16 elements (intervals)
-      extruded has 12 x 4 icy elements and 4 ice-free base elements
+mesh: base has 16 intervals; 4 are ice-free
+      extruded has 12 x 4 icy quad elements
       dimensions n_u = 466, n_p = 69
    0: 3.1438e+00
       c = 2
