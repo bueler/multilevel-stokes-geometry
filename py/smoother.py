@@ -6,9 +6,10 @@ class SmootherObstacleProblem:
     '''A smoother on an obstacle problem.  Works on a mesh of class MeshLevel1D and calls a solver of class GlenStokes.  Note the mesh holds the bed
     elevation (obstacle).
 
-    Implements Richardson plus FD Jacobian GS and Jacobi methods.  These
-    methods do not assume the residual functional has an easily-accessible
-    Jacobian or Jacobian diagonal.
+    Implements nonlinear Richardson plus nonlinear GS and Jacobi methods based
+    on the computation of the Jacobian diagonal entries by finite-differencing.
+    (These methods do not assume the residual has an easily-accessible
+    Jacobian diagonal.)
 
     The public interface implements residual evaluation and application of the
     in-place smoother:
@@ -122,10 +123,11 @@ class SmootherObstacleProblem:
         where the diagonal entry d_i = F'(s)[psi_i,psi_i] is computed
         by VERY SLOW finite differencing of expensive residual calculations
         at every point.
-        If d_i > 0 then
+        For each i, compute r = F(s).  If d_i > 0 then
             s_i <- max(s_i - omega * r_i / d_i, b_i)
         but otherwise
-            s_i <- phi_i.'''
+            s_i <- phi_i.
+        Note s_i is updated immediately.'''
         negd = []
         for j in range(1, len(s)-1): # loop over interior points
             sperturb = s.copy()
@@ -151,7 +153,7 @@ class SmootherObstacleProblem:
         using coloring.  Nodes of the same color are separated by cperthickness
         times the maximum ice thickness.  Set -cperthickness 1.0e10 (for
         example) to use VERY SLOW finite differencing without coloring.
-        If d_i > 0 then
+        First r = F(s).  Then for each i, if d_i > 0 then
             snew_i <- max(s_i - omega * r_i / d_i, b_i)
         but otherwise
             snew_i <- b_i.
@@ -164,6 +166,7 @@ class SmootherObstacleProblem:
         snew[0], snew[mesh1d.m+1] = mesh1d.b[0], mesh1d.b[mesh1d.m+1]
         negd = []
         for k in range(c):
+            # note jlist = [k+1,] (singleton) if k+1+c >= mesh1d.m+1
             jlist = np.arange(k+1, mesh1d.m+1, c, dtype=int)
             sperturb = s.copy()
             sperturb[jlist] += eps
