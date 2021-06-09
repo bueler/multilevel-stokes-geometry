@@ -193,8 +193,7 @@ class GlenStokes:
         assert self.basemesh is not None
         # solve the Glen-Stokes problem on the unperturbed extruded mesh
         meshs = self.extrudetogeometry(s, b)
-        us, ps = self.solve(meshs)
-        kress = self.kinematical(meshs, us)
+        us, ps, kress = self.solve(meshs)
         # solve on the PERTURBED extruded mesh
         sP = s.copy()
         for k in klist:
@@ -207,8 +206,7 @@ class GlenStokes:
                 print('WARNING viewperturb(): skipping bare-ground node k=%d' \
                       % k)
         meshP = self.extrudetogeometry(sP, b)
-        uP, pP = self.solve(meshP)
-        kresP = self.kinematical(meshP, uP)
+        uP, pP, kresP = self.solve(meshP)
         # compute difference as a function on the unperturbed mesh
         V = fd.VectorFunctionSpace(meshs, 'Lagrange', 2)
         W = fd.FunctionSpace(meshs, 'Lagrange', 1)
