@@ -93,7 +93,7 @@ adda('-omega', type=float, metavar='X', default=1.0,  # FIXME sensitive
     help='scale by this factor in smoother iteration (default=%(default)s)')
 adda('-printwarnings', action='store_true', default=False,
      help='print pointwise feasibility warnings')
-adda('-smoother', choices=['richardson', 'gsslow', 'jacobislow', 'jacobicolor'],
+adda('-smoother', choices=['richardson', 'gsslow', 'jacobicolor', 'newtonrslu'],
      metavar='X', default='jacobicolor',
      help='smoother (default=%(default)s)')
 adda('-steadyhelp', action='store_true', default=False,
