@@ -26,7 +26,7 @@ from firedrake import *
 from meshlevel import MeshLevel1D
 from problem import IceProblem
 from stokes import GlenStokes
-from smoother import SmootherObstacleProblem
+from smoother import ObstacleSmoother
 from mcdn import mcdnvcycle
 from visualize import showiteratecmb
 
@@ -133,7 +133,7 @@ ella = finemesh.ellf(problem.source(finemesh.xx()))  # source ell[v] = <a,v>
 s = problem.initial(finemesh.xx())
 
 # set-up smoother with included Stokes solver
-smooth = SmootherObstacleProblem(args, GlenStokes(args))
+smooth = ObstacleSmoother(args, GlenStokes(args))
 
 # generate .pvd file with initial state (see first residual())
 if args.o:

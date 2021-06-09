@@ -1,4 +1,4 @@
-'''Module for SmootherStokes class derived from SmootherObstacleProblem.'''
+'''Module for ObstacleSmoother.'''
 
 import numpy as np
 
@@ -8,7 +8,7 @@ import petsc4py
 petsc4py.init(sys.argv)  # must come before "import PETSc"
 from petsc4py import PETSc
 
-class SmootherObstacleProblem:
+class ObstacleSmoother:
     '''A smoother on an obstacle problem.  Works on a mesh of class MeshLevel1D and calls a solver of class GlenStokes.  Note the mesh holds the bed
     elevation (obstacle).
 
@@ -19,7 +19,7 @@ class SmootherObstacleProblem:
 
     The public interface implements residual evaluation and application of the
     in-place smoother:
-        smooth = SmootherObstacleProblem(args, solver)
+        smooth = ObstacleSmoother(args, solver)
         r = smooth.residual(mesh1d, s, ella)
         smooth.smoothersweep(mesh1d, s, ella)
     There is also evaluation of the CP norm,
