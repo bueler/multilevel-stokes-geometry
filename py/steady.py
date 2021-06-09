@@ -59,6 +59,8 @@ References:
 adda = parser.add_argument
 adda('-coarsesweeps', type=int, default=1, metavar='N',
      help='smoother sweeps on coarsest grid (default=%(default)s)')
+adda('-cperthickness', type=float, default=3.0, metavar='X',
+     help='parameter for -smoother jacobicolor (default=%(default)s m)')
 adda('-cyclemax', type=int, default=100, metavar='N',
      help='maximum number of (multilevel) cycles (default=%(default)s)')
 adda('-domainlength', type=float, default=30.0e3, metavar='L',
@@ -89,8 +91,6 @@ adda('-oimage', metavar='FILE', type=str, default='',
      help='save final image, e.g. .pdf or .png')
 adda('-omega', type=float, metavar='X', default=1.0,  # FIXME sensitive
     help='scale by this factor in smoother iteration (default=%(default)s)')
-adda('-padding', action='store_true', default=False,
-     help='put Hmin thickness of ice in ice-free locations')
 adda('-printwarnings', action='store_true', default=False,
      help='print pointwise feasibility warnings')
 adda('-smoother', choices=['richardson', 'gsslow', 'jacobislow', 'jacobicolor'],
@@ -109,8 +109,6 @@ if args.steadyhelp:
     parser.print_help()
     sys.exit(0)
 
-if args.padding:
-    assert args.Hmin > 0.0, 'padding requires minimum positive thickness'
 if args.viewperturb is not None:
     assert len(args.o) > 0, 'use -view perturb with -o'
 

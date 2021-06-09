@@ -117,10 +117,11 @@ class SmootherObstacleProblem:
         return []
 
     def _gsslowsweep(self, mesh1d, s, ella, r,
-                    eps=1.0, dump=False):
+                     eps=1.0, dump=False):
         '''Do in-place projected nonlinear Gauss-Seidel smoothing on s(x)
         where the diagonal entry d_i = F'(s)[psi_i,psi_i] is computed
-        by VERY SLOW finite differencing of expensive residual calculations.
+        by VERY SLOW finite differencing of expensive residual calculations
+        at every point.
         If d_i > 0 then
             s_i <- max(s_i - omega * r_i / d_i, b_i)
         but otherwise
@@ -142,47 +143,22 @@ class SmootherObstacleProblem:
             r = self.residual(mesh1d, s, ella)
         return negd
 
-    def _jacobislowsweep(self, mesh1d, s, ella, r,
-                        eps=1.0, dump=False):
-        '''Do in-place projected nonlinear Jacobi smoothing on s(x)
-        where the diagonal entry d_i = F'(s)[psi_i,psi_i] is computed
-        by VERY SLOW finite differencing of expensive residual calculations.
-        If d_i > 0 then
-            snew_i <- max(s_i - omega * r_i / d_i, b_i)
-        but otherwise
-            snew_i <- b_i.
-        After snew is completed we do s <- snew.'''
-        snew = s.copy()
-        negd = []
-        for j in range(1, len(s)-1): # loop over interior points
-            sperturb = s.copy()
-            sperturb[j] += eps
-            if dump:
-                self.savestatenextresidual(self.args.o + '_jacobi_%d.pvd' % j)
-            rperturb = self.residual(mesh1d, sperturb, ella)
-            d = (rperturb[j] - r[j]) / eps
-            if d > 0.0:
-                snew[j] = max(s[j] - self.args.omega * r[j] / d, mesh1d.b[j])
-            else:
-                snew[j] = mesh1d.b[j]
-                negd.append(j)
-        s[:] = snew[:] # in-place copy
-        return negd
-
     def _jacobicolorsweep(self, mesh1d, s, ella, r,
-                        eps=1.0, dump=False, cperthickness=3.0):
+                          eps=1.0, dump=False):
         '''Do in-place projected nonlinear Jacobi smoothing on s(x)
         where the diagonal entry d_i = F'(s)[psi_i,psi_i] is computed
         by SLOW finite differencing of expensive residual calculations, but
         using coloring.  Nodes of the same color are separated by cperthickness
-        times the maximum ice thickness.
+        times the maximum ice thickness.  Set -cperthickness 1.0e10 (for
+        example) to use VERY SLOW finite differencing without coloring.
         If d_i > 0 then
             snew_i <- max(s_i - omega * r_i / d_i, b_i)
         but otherwise
             snew_i <- b_i.
         After snew is completed we do s <- snew.'''
         thkmax = max(s - mesh1d.b)
-        c = int(np.ceil(cperthickness * thkmax / mesh1d.h))
+        c = int(np.ceil(self.args.cperthickness * thkmax / mesh1d.h))
+        c = min([c,mesh1d.m+1])
         print('      c = %d' % c)
         snew = mesh1d.b.copy() - 1.0  # snew NOT admissible; note check below
         snew[0], snew[mesh1d.m+1] = mesh1d.b[0], mesh1d.b[mesh1d.m+1]

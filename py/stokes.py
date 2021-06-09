@@ -71,14 +71,10 @@ class GlenStokes:
     def extracttop(self, mesh, field):
         '''On an extruded mesh with some ice-free (i.e. empty) columns, loop
         over the base mesh finding top cells where ice is present, then top
-        nodes, and evaluate the field there.  On an extruded mesh with padding,
-        just get the top Dirichlet nodes.  Only works for Q1 fields.
+        nodes, and evaluate the field there.  Only works for Q1 fields.
         (Thanks Lawrence Mitchell.)'''
         assert self.basemesh is not None
         Q1 = fd.FunctionSpace(mesh, 'Lagrange', 1)
-        if self.args.padding:
-            topbc = fd.DirichletBC(Q1, 1.0, 'top')
-            return field.dat.data_ro[topbc.nodes]
         # get the cells from basemesh and mesh
         bmP1 = fd.FunctionSpace(self.basemesh, 'Lagrange', 1)
         bmcnm = bmP1.cell_node_map().values
@@ -107,34 +103,24 @@ class GlenStokes:
         '''Generate extruded mesh over self.basemesh, to height s.  The icy
         columns get their height from s, with minimum height args.Hmin.  By
         default the extruded mesh has empty (0-element) columns if ice-free
-        according to s.  If args.padding==True then the whole extruded mesh has
-        the same layer count.  Optional reporting of mesh stats.'''
+        according to s.  Optional reporting of mesh stats.'''
         assert self.basemesh is not None
-        if report:
-            print('mesh: base of %d elements (intervals)' \
-                  % self.mx)
         # extrude to temporary total height 1.0
         mz = self.args.mz
-        if self.args.padding:
-            assert self.args.Hmin > 0.0, \
-                'padding requires minimum positive thickness'
-            mesh = fd.ExtrudedMesh(self.basemesh, mz, layer_height=1.0 / mz)
-            if report:
-                print('      extruded is padded, has %d x %d elements' \
-                      % (self.mx, mz))
-        else:
-            layermap = np.zeros((self.mx, 2), dtype=int)  # [[0,0], ..., [0,0]]
-            thk = s - b
-            thkelement = ( (thk[:-1]) + (thk[1:]) ) / 2.0
-            icyelement = (thkelement > self.args.Hmin + 1.0e-3)
-            layermap[:,1] = mz * np.array(icyelement, dtype=int)
-            # FIXME: in parallel we must provide local, haloed layermap
-            mesh = fd.ExtrudedMesh(self.basemesh, layers=layermap,
-                                   layer_height=1.0 / mz)
-            if report:
-                icycount = sum(icyelement)
-                print('      extruded has %d x %d icy elements and %d ice-free base elements' \
-                      % (icycount, mz, self.mx - icycount))
+        layermap = np.zeros((self.mx, 2), dtype=int)  # [[0,0], ..., [0,0]]
+        thk = s - b
+        thkelement = ( (thk[:-1]) + (thk[1:]) ) / 2.0
+        icyelement = (thkelement > self.args.Hmin + 1.0e-3)
+        layermap[:,1] = mz * np.array(icyelement, dtype=int)
+        # FIXME: in parallel we must provide local, haloed layermap
+        mesh = fd.ExtrudedMesh(self.basemesh, layers=layermap,
+                               layer_height=1.0 / mz)
+        if report:
+            icycount = sum(icyelement)
+            print('mesh: base has %d intervals; %d are ice-free' \
+                  % (self.mx, self.mx - icycount))
+            print('      extruded has %d x %d icy quad elements' \
+                  % (icycount, mz))
         # put s(x) into a Firedrake function on the base mesh
         P1base = fd.FunctionSpace(self.basemesh, 'Lagrange', 1)
         sbase = fd.Function(P1base)
