@@ -501,22 +501,25 @@ FIXME SMOOTHER POSSIBILITIES.  1 COLORING (PSEUDO-COLORING WITH LATERAL SEPARATI
 
 \section{Multilevel constraint decomposition} \label{sec:mcdstokes}
 
-In this section we propose a new multilevel scheme for solving the discrete SIGP weak form \eqref{eq:fesigpweakform} using iterated V-cycles.  The fundamental idea of such a scheme is the basic geometric multigrid idea that smoothing on coarse levels will rapidly reduce the high frequencies in the error, but here we must maintain admissibility on each level in a manner which does not re-introduce high frequencies.  Our method descends from the multilevel constraint decomposition (MCD) method of \cite{Tai2003}, see also \cite{GraeserKornhuber2009}, but our ``MCDN'' nonlinear variant uses a full approximation scheme (FAS) multigrid \cite{Trottenbergetal2001} approach which transfers both the current residual and an approximation of the solution down to coarser levels.
+In this section we propose a new multilevel scheme for solving the discrete SIGP weak form \eqref{eq:fesigpweakform} using iterated V-cycles.  The fundamental idea of such a scheme, in fact the basic geometric multigrid idea, is that smoothing on coarse levels will rapidly reduce the high frequencies in the error.  However, here we must maintain admissibility on each level in a manner which does not re-introduce high frequencies.  Our method is derived from the multilevel constraint decomposition (MCD) method of \cite{Tai2003} (see also \cite{GraeserKornhuber2009}), but our nonlinear variant (MCDN) uses a full approximation scheme (FAS) multigrid \cite{Trottenbergetal2001} approach which transfers both the current residual and an approximation of the solution down to coarser levels.
 
-Regarding notation for multiple mesh levels, suppose $\mathcal{T}^0$ is a fixed triangulation of $\Omega$, the coarse level.  For $J\ge 0$, suppose $\{\mathcal{T}^j\}_{j=1}^J$ are standard uniform refinements of $\mathcal{T}^0$ by edge bisection so that each $T \in \mathcal{T}^j$ becomes four similar triangles in $\mathcal{T}^{j+1}$ \cite{Braess2007}.  (Halve each interval when $d=1$.)  Let $\mathcal{V}^j$ be the $P_1$ FE space on $\mathcal{T}^j$, with subspace $\mathcal{V}_0^j \subset \mathcal{V}^j$ which are zero on $\partial\Omega$.  If $m_j$ is the number of interior nodes $\{(x_i^j,y_i^j)\}$ in $\mathcal{T}$ then $\dim(\mathcal{V}_0^j)=m_j$.  We seek an admissible solution to \eqref{eq:fesigpweakform} on the fine level $\mathcal{T}^J$.  Suppose $b^J \in \mathcal{V}^J$ denotes the fine-level bed topography.  The admissible surface elevations form a closed and convex set
+Regarding notation for multiple mesh levels, suppose $\mathcal{T}^0$ is a fixed triangulation of $\Omega$, the coarse level.  For $J\ge 0$, which gives the number of finer levels, suppose $\{\mathcal{T}^j\}_{j=1}^J$ are standard uniform refinements of $\mathcal{T}^0$ by edge bisection so that each $T \in \mathcal{T}^j$ becomes four similar triangles in $\mathcal{T}^{j+1}$ \cite{Braess2007}.  (Halve each interval when $d=1$.)  Let $\mathcal{V}^j$ be the $P_1$ FE space on $\mathcal{T}^j$, with subspace $\mathcal{V}_0^j = \mathcal{V}^j \cap W_0^{1,\qq}(\Omega)$.  If $m_j$ is the number of interior nodes $\{(x_i^j,y_i^j)\}$ in $\mathcal{T}^j$ then $\dim(\mathcal{V}_0^j)=m_j$.
+
+We seek an admissible solution to \eqref{eq:fesigpweakform} on the fine level $\mathcal{T}^J$.  Suppose $b^J \in \mathcal{V}^J$ denotes the fine-level bed topography.  The admissible fine-level surface elevations form a closed and convex set
 \begin{equation}
 \mathcal{K}^J = \{r^J \in \mathcal{V}^J \,:\, r^J \ge b^J, r^J|_{\partial\Omega} = b^J|_{\partial\Omega}\}.  \label{eq:singleadmissible}
 \end{equation}
-
-However, we follow \cite{GraeserKornhuber2009} in decomposing a ``defect obstacle'' formulation, and not direct use of the set $\mathcal{K}^J$.  That is, suppose $s^J \in \mathcal{K}^J$ is an admissible current iterate and let
+However, we follow \cite{GraeserKornhuber2009} in formulating a ``defect obstacle'' decomposition, instead of direct solution over the set $\mathcal{K}^J$.  Suppose $s^J \in \mathcal{K}^J$ is an admissible current iterate and let
 \begin{equation}
 \chi^J = b^J - s^J \in \mathcal{V}_0^J \label{eq:finedefectobstacle}
 \end{equation}
-be the associated defect obstacle, with $\chi^J \le 0$.  Note that $z^J \in \mathcal{V}_0^J$ is an admissible perturbation of $s^J$, i.e.~$s^J+z^J \in \mathcal{K}^J$, if and only if $z^J \ge \chi^J$.  Suppose $z^j \in \mathcal{V}_0^j$ is expanded in interior-node hat functions $\psi_i^j$, and define the monotone restriction operator $\mR : \mathcal{V}_0^j \to \mathcal{V}_0^{j-1}$ \cite{GraeserKornhuber2009} on $z^j = \sum_{i=0}^{m_j-1} z^j[i] \psi_i^j$ by maximizing nodal values over the (open) supports of each each coarser-level hat function:
+be the associated defect obstacle, so that $\chi^J \le 0$.  Note that $z^J \in \mathcal{V}_0^J$ is an admissible perturbation of $s^J$, i.e.~$s^J+z^J \in \mathcal{K}^J$, if and only if $z^J \ge \chi^J$.
+
+Now we define the monotone restriction operator $\mR : \mathcal{V}_0^j \to \mathcal{V}_0^{j-1}$ \cite{GraeserKornhuber2009} on $z^j = \sum_{i=0}^{m_j-1} z^j[i] \psi_i^j$, with coefficients $z^j[i]\in\RR$, by maximizing nodal values over the (open) supports of each coarser-level hat function:
 \begin{equation}
 \mR z^j = \sum_{\ell=0}^{m_{j-1}-1} \max\left\{z^j[i] \,:\,\psi_\ell^{j-1}(x_i^j,y_i^j) \right\}\,\psi_\ell^{j-1}.  \label{eq:monotonerestriction}
 \end{equation}
-Using $\mR$ a defect obstacle is defined on each level:
+We use this nonlinear operator to define a defect obstacle on each level:
 \begin{equation}
 \chi^{j-1} = \mR \chi^j  \label{eq:recursivedefectobstacle}
 \end{equation}
@@ -541,20 +544,20 @@ A point-wise smoother on a given level will solve one-dimensional VIs at each no
 \begin{equation}
 \mathcal{D}^j = \left\{y^j \in \mathcal{V}_0^j \,:\, y^j \ge \phi^j\right\}, \qquad \mathcal{U}^j = \left\{z^j \in \mathcal{V}_0^j \,:\, z^j \ge \chi^j\right\}. \label{eq:downupsets}
 \end{equation}
-The down-admissible constraint sets $\mathcal{D}^j$ sum to an up-admissible constraint set for each level, i.e.~$\mathcal{D}^0 + \mathcal{D}^1 + \dots + \mathcal{D}^j = \mathcal{U}^j$ in the sense that every $z^j \in \mathcal{U}^j$ is the sum of elements, though not uniquely.  The $\mathcal{U}^j$ are themselves nested in $\mathcal{U}^J= \{z^J \,:\, z^J \ge b^J - s^J\}$, and this forms a multilevel cone approximation, from the inside, of the continuum defect constraint set $\mathcal{K} - s = \{z\,:\,z \ge b - s\}$:
+Note that $0 \in \mathcal{D}^j \cap \mathcal{U}^j$; a zero perturbation is always admissible.  The down-admissible constraint sets $\mathcal{D}^j$ sum to an up-admissible constraint set for each level.  The $\mathcal{U}^j$ are themselves nested,
 \begin{equation}
-\mathcal{U}^0 \subset \mathcal{U}^1 \subset \dots \subset \mathcal{U}^J \subset \mathcal{K} - s \subset W_0^{1,\qq}(\Omega). \label{eq:innerconeapprox}
+\mathcal{U}^0 \subset \mathcal{U}^1 \subset \dots \subset \mathcal{U}^J \subset W_0^{1,\qq}(\Omega). \label{eq:innerconeapprox}
 \end{equation}
 
 We seek a solution to VI \eqref{eq:fesigpweakform} on the fine level.  The original idea of Tai \cite{Tai2003} is to use a multilevel constraint decomposition (MCD) like the above  system $\{\mathcal{D}^j\}$ to compute corrections $y^j \in \mathcal{D}^j$ which sum to a solution of the (nonlinear) fine-level VI,
 \begin{equation}
-F^J(s^J + y^J + \dots + y^j)[v^j - y^j] \ge (a,v^j - y^j) \quad \text{for all } v^j \in \mathcal{D}^j, \label{eq:mcdoriginal}
+F^J(s^J + y^J + \dots + y^j)[v^j - y^j] \ge (a,v^j - y^j) \quad \text{for all } v^j \in \mathcal{D}^j. \label{eq:mcdoriginal}
 \end{equation}
-where $F^J = F^h$ in \eqref{eq:fesigpweakform}.  In \cite{Tai2003}, VIs \eqref{eq:mcdoriginal} are to be solved on descending levels $j=J$ down to $j=0$, forming a down-slash or V(1,0) cycle.  (See also \cite[Algorithm 4.7]{GraeserKornhuber2009}.)  Note that $y^J + \dots + y^j \in \mathcal{U}^J$ so $s^J + y^J + \dots + y^j \ge b^J$ is admissible in the original sense, and that \eqref{eq:mcdoriginal} exploits the simplification $(s^J + y^J + \dots + v^j) - (s^J + y^J + \dots + y^j) = v^j - y^j$.
+(Here $F^J = F^h$ in \eqref{eq:fesigpweakform}.)  Observe that \eqref{eq:mcdoriginal} exploits the simplification $(s^J + y^J + \dots + v^j) - (s^J + y^J + \dots + y^j) = v^j - y^j$.  Also note that $y^J + \dots + y^j \in \mathcal{U}^J$ so the updated fine-level iterate is admissible in the original sense: $s^J + y^J + \dots + y^j \ge b^J$.
 
-However, there is no practical way to achieve rapid solution of VI \eqref{eq:mcdoriginal} on coarse levels if the latest iterate $s^J + y^J + \dots + y^j$ must be represented; it has fine-level content.  This is the reason to add the full approximation scheme (FAS) \cite{Trottenbergetal2001} concept of a nonlinear coarse-level ``equation'', which is here a nonlinear VI.  In order to implement our approach we need to state the FAS coarse-level correction equation based on appropriate restrictions, as follows.
+In \cite{Tai2003}, VIs \eqref{eq:mcdoriginal} are to be solved on descending levels $j=J$ down to $j=0$, forming a down-slash or V(1,0) cycle.  (See also \cite[Algorithm 4.7]{GraeserKornhuber2009}.)  However, there is no practical way to achieve rapid solution of VI \eqref{eq:mcdoriginal} on coarse levels if the latest iterate $s^J + y^J + \dots + y^j$ must be directly represented; it has fine-level content.  This is the reason to add a full approximation scheme (FAS) \cite{Trottenbergetal2001} coarse-level ``equation'', which is here a nonlinear VI.  In order to implement our approach we will need to state the FAS coarse-level correction equation using appropriate linear restriction and prolongation operators, as follows.
 
-Let $\iR: \mathcal{V}^{j+1} \to \mathcal{V}^j$ be the injection restriction operator \cite{Trottenbergetal2001}.  Suppose $y^j \in \mathcal{D}^j$ denotes the desired down-correction on the $j$th level.  For corrections $y^j \in \mathcal{D}^j$, define $t^j \in \mathcal{V}^j$ as the $j$th-level approximation to the corrected fine-level solution (i.e.~$t^j \approx s^J + y^J + \dots + y^j$),
+Let $\iR: \mathcal{V}^{j+1} \to \mathcal{V}^j$ be the injection operator \cite{Trottenbergetal2001}.  Suppose $y^j \in \mathcal{D}^j$ denotes the desired down-correction on the $j$th level.  For corrections $y^j \in \mathcal{D}^j$, define $t^j \in \mathcal{V}^j$ as the $j$th-level approximation to the corrected fine-level solution (i.e.~$t^j \approx s^J + y^J + \dots + y^j$),
 \begin{equation}
 t^j = \begin{cases} s^J, & j=J \\
                     \iR(t^{j+1} + y^{j+1}), & j < J.
