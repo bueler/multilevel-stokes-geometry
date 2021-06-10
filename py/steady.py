@@ -2,6 +2,7 @@
 '''Solve steady-geometry Stokes obstacle problem by a multilevel constraint decomposition method.'''
 
 # TODO:
+#   0. fix the FD Jacobian scheme so that Hmin does not conflict
 #   1. widen the default sheet?; consider -domainlength 60.0e3 -domeL 25.0e3
 #   2. replace meshlevel.py with use of Firedrake interval mesh (requires
 #      new implementation of monotone restriction); this would allow
