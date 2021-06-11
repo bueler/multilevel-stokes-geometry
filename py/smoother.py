@@ -174,7 +174,10 @@ class ObstacleSmoother:
             snew_i <- b_i.
         After snew is completed we do s <- snew.'''
         c = self._colors(mesh1d, s)
-        print('      c = %d colors' % c)
+        if c >= mesh1d.m + 1:
+            print('      [coloring off]')
+        else:
+            print('      c = %d colors' % c)
         snew = mesh1d.b.copy() - 1.0  # snew NOT admissible; note check below
         snew[0], snew[mesh1d.m+1] = mesh1d.b[0], mesh1d.b[mesh1d.m+1]
         negd = []
