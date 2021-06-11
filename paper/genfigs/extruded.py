@@ -38,9 +38,9 @@ def plotextruded(x, b, s, mz=5, Hmin=0.0):
                 else:
                     plt.plot([x[j], x[j+1]], [zl, zr], 'k-')
             # show original s near cliffs
-            if Hmin > 0.0 and \
-                    (not isgap(b[j],s[j]) or not isgap(b[j+1],s[j+1])):
-                plt.plot([x[j], x[j+1]], [s[j], s[j+1]], 'k:', lw=3.0)
+            #if Hmin > 0.0 and \
+            #        (not isgap(b[j],s[j]) or not isgap(b[j+1],s[j+1])):
+            #    plt.plot([x[j], x[j+1]], [s[j], s[j+1]], 'k:', lw=3.0)
         else:
             plt.plot([x[j], x[j+1]], [s[j], s[j+1]], 'k-', lw=3.0)
     plt.axis('off')
