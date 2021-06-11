@@ -177,7 +177,7 @@ s - b &\ge 0 && \text{on $\Omega$} & \tikzmark{ncptop} \\
     \begin{itemize}
     \item $\frac{\partial s}{\partial t} \approx \frac{s^\ell-s^{\ell-1}}{\Delta t}$ in evolving SKE, and write $s$ for $s^\ell$
     \end{itemize}
-\item again get an NCP coupled to a Stokes problem:
+\item at each time step, solve NCP coupled to Stokes:
 
 \vspace{-5mm}
 
@@ -192,7 +192,7 @@ s - b &\ge 0 && \text{on $\Omega$} \\
 \end{align*}
 
     \begin{itemize}
-    \item \alert{similar \dots mostly suffices to consider steady IGP}
+    \item very similar to steady IGP
     \end{itemize}
 \end{itemize}
 \end{frame}
@@ -203,9 +203,9 @@ s - b &\ge 0 && \text{on $\Omega$} \\
 \begin{itemize}
 \item almost no one is solving the implicit IGP
     \begin{itemize}
-    \item except Brinkerhoff et al (2017) (\emph{upwinding, semi-coupled})
-    \item and Wirbel \& Jarosch (2020) (\emph{semi-coupled, artificial ice layer})
-    \item neither scalable (\emph{single level}) nor unconditionally stable
+    \item except Bueler (2016), Brinkerhoff et al (2017) (\emph{shallow})
+    \item and Wirbel \& Jarosch (2020) (\emph{semi-coupled, fake ice layer})
+    \item none are scalable (\emph{single level})
     \end{itemize}
 \item what are people doing instead?
     \begin{itemize}
@@ -221,7 +221,7 @@ s - b &\ge 0 && \text{on $\Omega$} \\
 \end{columns}
 
 \medskip
-    \item \emph{my goal}: unconditionally-stable implicit with Stokes dynamics
+    \item \emph{my goals}: Stokes, unconditionally-stable steps, scalable
     \end{itemize}
 \end{itemize}
 \end{frame}
@@ -285,7 +285,7 @@ for all $r \in \mathcal{K}$
 \begin{frame}{what kind of beast is $\Phi$?}
 
 \begin{center}
-\includegraphics[width=0.7\textwidth]{figs/idoaction.png} \hfill \includegraphics[width=0.15\textwidth]{figs/elephant.png}
+\includegraphics[width=0.7\textwidth]{figs/idoaction.png} \hfill \includegraphics[width=0.2\textwidth]{figs/elephant.png}
 \end{center}
 
 \begin{itemize}
@@ -303,7 +303,7 @@ for all $r \in \mathcal{K}$
     \item $\Phi$ is diffusive in the large!
     \item $\Phi$ is degenerate at the ice margin!
     \end{itemize}
-\item yet common to say $\Phi$ is hyperbolic because SKE is transport equation for thickness: $H_t + \overline{\bu}\, \grad H = a$
+\item yet common to say $\Phi$ is hyperbolic because SKE is equivalent to a transport equation for thickness: $H_t + \overline{\bu}\, \grad H = a$
 \end{itemize}
 \end{frame}
 
@@ -319,30 +319,38 @@ $$\ip{\Phi^h(s^h) - a}{r^h - s^h} \ge 0 \qquad \text{for all $r^h \in \mathcal{K
 \begin{itemize}
 \item[]
     \begin{itemize}
-    \item $P_1$ because low regularity at free boundary
-    \item uses numerical solution of Stokes problem $F_{\Lambda_{s^h}}(\bu^h,p^h)=0$ to evaluate $\Phi^h(s^h)=-\bu|_{s^h}\cdot\bn_{s^h}$
+    \item $P_1$ because of low regularity at free boundary
+    \item evaluate $\Phi^h(s^h)=-\bu|_{s^h}\cdot\bn_{s^h}$ using numerical solution of Stokes problem $F_{\Lambda_{s^h}}(\bu^h,p^h)=0$
     \end{itemize}
 \item seeking a solver which is:
     \begin{itemize}
     \item \alert{robust}
-    \item \alert{optimal} over $m$ degrees of freedom in $\mathcal{V}^h$ 
+    \item \alert{optimal} $O(m)$ work over $m$ degrees of freedom in $\mathcal{V}^h$
         \begin{itemize}
-        \item[{\color{black} $\circ$}] optimal means work is $O(m)$ \dots requires multigrid
+        \item[{\color{black} $\circ$}] requires multigrid
         \end{itemize}
-    \item<2> \emph{for now these are aspirations \dots}
+    \item \emph{for now these are aspirations \dots}
     \end{itemize}
 \end{itemize}
 \end{frame}
 
 
+\begin{frame}{smoothness and multilevel methods}
 
-\begin{frame}{Stokes on an extruded mesh}
-
-\begin{itemize}
-\item FIXME
-\end{itemize}
-
-\includegraphics[width=0.8\textwidth]{figs/extruded.png}
+\begin{columns}
+\column{0.35\textwidth}
+    \begin{itemize}
+    \small
+    \item which solution variable?
+    \item choice between surface elevation ($s$) and thickness ($H$)
+    \item interior smoothness means $s$ is better for multigrid
+        \begin{itemize}
+        \item need to \emph{not} have fake ice where $s=b$
+        \end{itemize}
+    \end{itemize}
+\column{0.65\textwidth}
+    \includegraphics[width=\textwidth]{figs/giscross.png}
+\end{columns}
 \end{frame}
 
 
@@ -357,6 +365,15 @@ $$\ip{\Phi^h(s^h) - a}{r^h - s^h} \ge 0 \qquad \text{for all $r^h \in \mathcal{K
 \input{tikz/vcycle.tex}
 \end{frame}
 
+
+\begin{frame}{Stokes on an extruded mesh}
+
+\begin{itemize}
+\item FIXME
+\end{itemize}
+
+\includegraphics[width=0.8\textwidth]{figs/extruded.png}
+\end{frame}
 
 
 \begin{frame}{smoothers}
