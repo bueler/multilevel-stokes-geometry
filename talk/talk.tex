@@ -92,8 +92,8 @@
 \item take simplest such problem (grounded, nonsliding, isothermal)
 \item for simplicity, assume time-independent data on fixed $\Omega \subset \RR^2$:
     \begin{itemize}
-    \item climatic mass balance $a(x,y)$ \hfill $\gets$ \emph{$a>0$ for snowing}
-    \item bed elevation $b(x,y)$
+    \item (net) climatic mass balance $a$ \hfill $\gets$ \emph{$a>0$ for accumulation}
+    \item bed elevation $b$
     \end{itemize}
 \item \emph{to compute}: surface elevation $s$ on $\Omega$ and icy domain $\Lambda_s \subset \RR^3$
 \end{itemize}
@@ -107,13 +107,13 @@
 \item $\therefore$ must solve an equation for the surface elevation
 \item the surface kinematical equation (SKE) holds \emph{on} the ice
 \begin{align*}
-\frac{\partial s}{\partial t} - \bu|_s \cdot \bn_s &= a & &\text{\emph{evolving}} \\
-\bu|_s \cdot \bn_s + a &= 0 & &\text{\emph{steady state}}
+\frac{\partial s}{\partial t} - \bu|_s \cdot \bn_s - a &= 0 & &\text{\emph{evolving}} \\
+-\bu|_s \cdot \bn_s - a &= 0 & &\text{\emph{steady state}}
 \end{align*}
 
     \begin{itemize}
     \item $\bn_s = \left<-s_x,-s_y,1\right>$  \, is an upward normal to the ice surface
-    \item \emph{not} on the ice: $a\le 0$ for $t>0$ (or in steady state)
+    \item where \emph{not} on the ice: $a\le 0$
     \end{itemize}
 \end{itemize}
 
@@ -137,8 +137,7 @@
 \begin{frame}{steady IGP strong form}
 
 \begin{itemize}
-\item the steady IGP free-boundary problem for $s(x,y)$ on $\Omega$
-\item it is a \alert{nonlinear complementarity problem (NCP) for $s$ which is coupled to a Stokes problem for $\bu,p$:}
+\item the steady IGP free-boundary problem, for $s(x,y)$ on $\Omega$, is a \alert{nonlinear complementarity problem (NCP) for $s$ which is coupled to a non-Newtonian Stokes problem for $\bu,p$:}
 
 \vspace{-5mm}
 
@@ -163,7 +162,7 @@ s - b &\ge 0 && \text{on $\Omega$} & \tikzmark{ncptop} \\
 \vspace{-8mm}
 
     \begin{itemize}
-    \item plus Glen-law effective viscosity with $\text{p}=(1/\text{n})+1(=4/3)$:
+    \item Glen-law effective viscosity with $\text{p}=(1/\text{n})+1(=4/3)$:
       $$\nu_\eps = \frac{1}{2} B_n \left(|D\bu|^2 + \eps\, D_0^2\right)^{(\pp-2)/2}$$
     \item \emph{count the 3 nonlinearities}
     \end{itemize}
@@ -174,13 +173,11 @@ s - b &\ge 0 && \text{on $\Omega$} & \tikzmark{ncptop} \\
 \begin{frame}{\alert{implicit} IGP strong form}
 
 \begin{itemize}
-\item the evolving IGP free-boundary problem for $s(x,y,t)$ on $\Omega \times [0,T]$
-\item consider one step of backward Euler scheme
+\item solve one step of backward Euler for $s,\bu,p$ at new time $t^\ell$
     \begin{itemize}
-    \item solve for $s,\bu,p$ at new time $t^\ell$
-    \item $\frac{\partial s}{\partial t} \approx \frac{s^\ell-s^{\ell-1}}{\Delta t}$, and write $s$ for $s^\ell$
+    \item $\frac{\partial s}{\partial t} \approx \frac{s^\ell-s^{\ell-1}}{\Delta t}$ in evolving SKE, and write $s$ for $s^\ell$
     \end{itemize}
-\item again: NCP for $s$ coupled to a Stokes problem for $\bu,p$:
+\item again get an NCP coupled to a Stokes problem:
 
 \vspace{-5mm}
 
@@ -195,7 +192,7 @@ s - b &\ge 0 && \text{on $\Omega$} \\
 \end{align*}
 
     \begin{itemize}
-    \item \alert{pretty similar \dots mostly suffices to consider steady IGP}
+    \item \alert{similar \dots mostly suffices to consider steady IGP}
     \end{itemize}
 \end{itemize}
 \end{frame}
@@ -206,9 +203,9 @@ s - b &\ge 0 && \text{on $\Omega$} \\
 \begin{itemize}
 \item almost no one is solving the implicit IGP
     \begin{itemize}
-    \item except Brinkerhoff et al (2017) (\emph{upwinding limits time-step?})
+    \item except Brinkerhoff et al (2017) (\emph{upwinding, semi-coupled})
     \item and Wirbel \& Jarosch (2020) (\emph{semi-coupled, artificial ice layer})
-    \item neither scalable (\emph{single level})
+    \item neither scalable (\emph{single level}) nor unconditionally stable
     \end{itemize}
 \item what are people doing instead?
     \begin{itemize}
@@ -224,7 +221,7 @@ s - b &\ge 0 && \text{on $\Omega$} \\
 \end{columns}
 
 \medskip
-    \item my goal is to do better
+    \item \emph{my goal}: unconditionally-stable implicit with Stokes dynamics
     \end{itemize}
 \end{itemize}
 \end{frame}
@@ -250,6 +247,9 @@ extract trace $\bus$, then extend $\Phi(s) = -\bus \cdot \bn_s$ by zero to $\Ome
     \item optimal solver exists (Isaac et al 2015)
     \end{itemize}
 \item $\therefore$ \, $\phi(s)$ is well-defined if $s$ is piecewise $C^1$
+    \begin{itemize}
+    \item a regularity conjecture
+    \end{itemize}
 \end{itemize}
 
 \end{frame}
@@ -285,7 +285,7 @@ for all $r \in \mathcal{K}$
 \begin{frame}{what kind of beast is $\Phi$?}
 
 \begin{center}
-\mbox{\includegraphics[width=0.7\textwidth]{figs/idoaction.png} \hfill \includegraphics[width=0.2\textwidth]{figs/elephant.png}}
+\includegraphics[width=0.7\textwidth]{figs/idoaction.png} \hfill \includegraphics[width=0.15\textwidth]{figs/elephant.png}
 \end{center}
 
 \begin{itemize}
