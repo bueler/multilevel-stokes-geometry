@@ -76,6 +76,8 @@ adda('-eps', type=float, metavar='X', default=1.0e-2,  # FIXME sensitive
     help='regularization used in viscosity (default=%(default)s)')
 adda('-Hmin', type=float, metavar='X', default=0.0,
     help='minimum ice thickness (default=%(default)s)')
+adda('-initialzero', action='store_true', default=False,
+     help='initialize with s=0 (vs default of dome)')
 adda('-irtol', type=float, default=1.0e-3, metavar='X',
      help='reduce norm of inactive residual (default=%(default)s)')
 adda('-jcoarse', type=int, default=0, metavar='J',
@@ -94,7 +96,7 @@ adda('-omega', type=float, metavar='X', default=1.0,  # FIXME sensitive
     help='scale by this factor in smoother iteration (default=%(default)s)')
 adda('-printwarnings', action='store_true', default=False,
      help='print pointwise feasibility warnings')
-adda('-smoother', choices=['richardson', 'gsslow', 'jacobicolor', 'newtonrslu'],
+adda('-smoother', choices=['richardson', 'gsslow', 'jacobicolor', 'newtonrs'],
      metavar='X', default='jacobicolor',
      help='smoother (default=%(default)s)')
 adda('-steadyhelp', action='store_true', default=False,
@@ -131,7 +133,10 @@ else:
 
 # fine-level data
 ella = finemesh.ellf(problem.source(finemesh.xx()))  # source ell[v] = <a,v>
-s = problem.initial(finemesh.xx())
+if args.initialzero:
+    s = finemesh.zeros()
+else:
+    s = problem.initial(finemesh.xx())
 
 # set-up smoother with included Stokes solver
 smooth = ObstacleSmoother(args, GlenStokes(args))
@@ -146,7 +151,7 @@ if args.sweepsonly:
 else:
     print('MCDN with smoother "%s" ...' % args.smoother)
 r = smooth.residual(finemesh, s, ella)  # generates file if -o above
-normF0 = smooth.inactiveresidualnorm(finemesh, s, r)
+normF0 = smooth.cpresidualnorm(finemesh, s, r)
 if args.monitor:
     print('   0: %.4e' % normF0)
 for j in range(args.cyclemax):
@@ -155,7 +160,7 @@ for j in range(args.cyclemax):
     else:
         s += mcdnvcycle(args, smooth, hierarchy, s, ella)
         r = smooth.residual(finemesh, s, ella)  # needed? return it from MCDN?
-    normF = smooth.inactiveresidualnorm(finemesh, s, r)
+    normF = smooth.cpresidualnorm(finemesh, s, r)
     if args.monitor:
         print('%4d: %.4e' % (j+1, normF))
     if normF < args.irtol * normF0:

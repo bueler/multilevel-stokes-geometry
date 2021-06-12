@@ -12,18 +12,26 @@ class ObstacleSmoother:
     '''A smoother on an obstacle problem.  Works on a mesh of class MeshLevel1D and calls a solver of class GlenStokes.  Note the mesh holds the bed
     elevation (obstacle).
 
-    Implements nonlinear Richardson plus nonlinear GS and Jacobi methods based
-    on the computation of the Jacobian diagonal entries by finite-differencing.
-    (These methods do not assume the residual has an easily-accessible
-    Jacobian diagonal.)
+    Implements:
+        * nonlinear Richardson (pointwise)
+        * nonlinear Gauss-Seidel (pointwise)
+        * nonlinear Jacobi (pointwise, coloring)
+        * Newton reduced-space (coloring)
+    In all cases the Jacobian entries are computed by finite-differencing,
+    but only the diagonal is used in the pointwise smoothers.  The coloring
+    smoothers get multiple rows of the Jacobian matrix by assigning different
+    colors to points which are more than a certain number of ice thicknesses
+    apart.
 
     The public interface implements residual evaluation and application of the
     in-place smoother:
         smooth = ObstacleSmoother(args, solver)
         r = smooth.residual(mesh1d, s, ella)
         smooth.smoothersweep(mesh1d, s, ella)
+    Note smoothersweep() calls a smoother from the dictionary self.smoothers.
+
     There is also evaluation of the CP norm,
-        irnorm = smooth.inactiveresidualnorm(mesh1d, s, r)
+        irnorm = smooth.cpresidualnorm(mesh1d, s, r)
     and a routine to trigger output:
         smooth.savestatenextresidual(filename)
     '''
@@ -31,9 +39,12 @@ class ObstacleSmoother:
     def __init__(self, args, solver):
         self.args = args
         self.solver = solver
-        self.ieps = 0.001  # if s[j] > b[j] + ieps then node j is inactive
         self.created = False
         self.saveflag = False
+        self.smoothers = {'richardson':  self._richardsonsweep,
+                          'gsslow':      self._gsslowsweep,
+                          'jacobicolor': self._jacobicolorsweep,
+                          'newtonrs':    self._newtonrs}
 
     def _checkadmissible(self, mesh1d, w, phi):
         '''Check admissibility and stop if not.'''
@@ -51,14 +62,13 @@ class ObstacleSmoother:
             ind = range(mesh1d.m, 0, -1)  # m,...,1
         return ind
 
-    def inactiveresidualnorm(self, mesh1d, s, r):
+    def cpresidualnorm(self, mesh1d, s, r):
         '''Compute the norm of the residual values at nodes where the constraint
         is NOT active.  Where the constraint is active the residual r=F(s) in
         the complementarity problem is allowed to have any positive value;
         only the residual at inactive nodes is relevant to convergence.'''
         F = r.copy()
-        F[s < mesh1d.b + self.ieps] = np.minimum(F[s < mesh1d.b + self.ieps],
-                                                 0.0)
+        F[s <= mesh1d.b] = np.minimum(F[s <= mesh1d.b], 0.0)
         return mesh1d.l2norm(F)
 
     def savestatenextresidual(self, name):
@@ -102,14 +112,7 @@ class ObstacleSmoother:
         mesh1d.checklen(mesh1d.b)
         if currentr is None:
             currentr = self.residual(mesh1d, s, ella)
-        if self.args.smoother == 'richardson':
-            negd = self._richardsonsweep(mesh1d, s, ella, currentr)
-        elif self.args.smoother == 'gsslow':
-            negd = self._gsslowsweep(mesh1d, s, ella, currentr)
-        elif self.args.smoother == 'jacobicolor':
-            negd = self._jacobicolorsweep(mesh1d, s, ella, currentr)
-        elif self.args.smoother == 'newtonrslu':
-            negd = self._newtonrslu(mesh1d, s, ella, currentr)
+        negd = self.smoothers[self.args.smoother](mesh1d, s, ella, currentr)
         mesh1d.WU += 1
         if self.args.monitor and len(negd) > 0:
             print('      negative diagonal entries: ', end='')
@@ -153,14 +156,22 @@ class ObstacleSmoother:
         return negd
 
     def _colors(self, mesh1d, s):
-        '''Compute c which is the number of colors (and the gap between nodes
-        with the same color).
-        Nodes of the same color are separated by cperthickness
-        times the maximum ice thickness.  Set e.g. -cperthickness 1.0e10
-        to use VERY SLOW finite differencing without coloring.'''
+        '''Compute c which is the number of colors and the gap between nodes
+        with the same color.  Nodes of the same color are separated by
+        cperthickness times the maximum ice thickness.  Set -cperthickness X
+        where X is greater than ice sheet width to turn off coloroing.  (Thus
+        VERY SLOW finite differencing without coloring.)'''
         thkmax = max(s - mesh1d.b)
-        c = int(np.ceil(self.args.cperthickness * thkmax / mesh1d.h))
-        return min([c, mesh1d.m+1])
+        if thkmax == 0.0:
+            c = mesh1d.m + 1
+        else:
+            c = int(np.ceil(self.args.cperthickness * thkmax / mesh1d.h))
+            c = min([c, mesh1d.m + 1])
+        if c >= mesh1d.m + 1:
+            print('      [coloring off]')
+        else:
+            print('      c = %d colors' % c)
+        return c
 
     def _jacobicolorsweep(self, mesh1d, s, ella, r,
                           eps=1.0, dump=False):
@@ -174,10 +185,6 @@ class ObstacleSmoother:
             snew_i <- b_i.
         After snew is completed we do s <- snew.'''
         c = self._colors(mesh1d, s)
-        if c >= mesh1d.m + 1:
-            print('      [coloring off]')
-        else:
-            print('      c = %d colors' % c)
         snew = mesh1d.b.copy() - 1.0  # snew NOT admissible; note check below
         snew[0], snew[mesh1d.m+1] = mesh1d.b[0], mesh1d.b[mesh1d.m+1]
         negd = []
@@ -202,82 +209,128 @@ class ObstacleSmoother:
         s[:] = snew[:] # in-place copy
         return negd
 
-    def _newtonrslu(self, mesh1d, s, ella, r,
-                    eps=1.0, dump=False, band=1):
-        '''Do one in-place projected, reduced-space Newton step on s(x).
-        First computes an approximated Jacobian using coloring.  It is
-        band-limited to [-band,band] relative to the diagonal; band = 1 gives
-        tridiagonal.  We require band + 2 <= c where c is the gap generated by
-        coloring.  We apply LU from PETSc to solve the linear step equations,
-        and do projected line search.'''
-        # do coloring
+    def _fdjacobianband(self, mesh1d, s, ella,
+                        currentr=None, eps=20.0, dump=False, band=1):
+        '''Compute a banded approximation A of the Jacobian, using coloring,
+        by evaluating the residual function.  A is band-limited to [-band,band]
+        around the diagonal; band = 1 gives A tridiagonal.'''
+        if currentr is None:
+            r = self.residual(mesh1d, s, ella)
+        else:
+            r = currentr
+        A = PETSc.Mat()
+        A.create(PETSc.COMM_WORLD)
+        A.setSizes((mesh1d.m, mesh1d.m))
+        A.setFromOptions()
+        A.setUp()  # FIXME need pre-allocation and parallel
         c = self._colors(mesh1d, s)
-        assert band + 2 <= c
-        # find inactive indices; FIXME include marginal active nodes?
-        II = []
-        for j in range(1, mesh1d.m+1):
-            if s[j] > mesh1d.b[j] + self.ieps:
-                II.append(j)
-        mA = len(II)
-        print('      c = %d colors and mA = %d inactive nodes' % (c,mA))
-        assert mA >= 1
-        # generate Jacobian approximation by finite differencing
-        Jac = PETSc.Mat()
-        Jac.create(PETSc.COMM_WORLD)
-        Jac.setSizes((mA,mA))
-        Jac.setFromOptions()
-        Jac.setUp()  # FIXME consider pre-allocation
+        # FIXME assert band + 2 <= c
         negd = []
         for k in range(c):
-            # note jlist = [k+1,] (singleton) if k+1+c >= mesh1d.m+1
-            jlist = np.arange(k+1, mesh1d.m+1, c, dtype=int)
-            #print(jlist)
+            # nodes of the color k
+            nodelist = np.arange(k+1, mesh1d.m+1, c, dtype=int) # 1-based
+            #    (note jlist = [k+1,] (singleton) if k+1+c >= mesh1d.m+1)
             sperturb = s.copy()
-            sperturb[jlist] += eps
+            sperturb[nodelist] += eps
             if dump:
-                self.savestatenextresidual(self.args.o + '_jacobi_%d.pvd' % j)
+                self.savestatenextresidual(self.args.o \
+                                           + '_newtonrs_color%d.pvd' % k)
             rperturb = self.residual(mesh1d, sperturb, ella)
-            for j in list(set(II) & set(jlist)):  # colored inactive nodes
-                row = II.index(j)
-                col, val = [], []
-                for l in range(j-band,j+band+1):
-                    if l in II:
-                        col.append(II.index(l))
-                        ajl = (rperturb[l] - r[l]) / eps
-                        val.append(ajl)
-                        if l == j and ajl < 0.0:
-                            negd.append(j)
-                Jac.setValues([row,],col,val)
-        Jac.assemblyBegin()
-        Jac.assemblyEnd()
-        #Jac.view()
-        # right-hand side of Newton system:  Jac(s) ds = - r(s)
-        mr = PETSc.Vec()
-        mr.create(PETSc.COMM_WORLD)
-        mr.setSizes(mA)
-        mr.setFromOptions()
-        mr.setValues(range(mA), -r[II])
-        mr.assemblyBegin()
-        mr.assemblyEnd()
-        #mr.view()
-        # solve for step in s
-        # solver feedback works, for example:
-        #   -newt_ksp_view
-        #   -newt_ksp_converged_reason
-        #   -newt_ksp_view_mat
-        #   -newt_ksp_view_rhs
-        #   -newt_pc_type svd -newt_pc_svd_monitor
+            # fill k-colored rows by finite differences
+            for jnode in nodelist:
+                row = jnode - 1
+                # columns around diagonal
+                col = list(range(max(0, row-band), min(mesh1d.m, row+band+1)))
+                val = []
+                for l in col:
+                    lnode = l + 1
+                    ajl = (rperturb[lnode] - r[lnode]) / eps
+                    val.append(ajl)
+                    if lnode == jnode and ajl < 0.0:
+                        negd.append(jnode)
+                A.setValues([row,], col, val)
+        A.assemblyBegin()
+        A.assemblyEnd()
+        return A, negd
+
+    def _changableset(self, mesh1d, s, r):
+        '''Return index set (PETSc IS) for changable nodes, i.e. those with
+        either s > b or r <= 0.'''
+        #     FIXME include marginal active nodes?
+        II = []
+        for j in range(1, mesh1d.m+1):  # j is 1-based
+            if s[j] > mesh1d.b[j] or r[j] <= 0.0:
+                II.append(j - 1)
+        ii = PETSc.IS()
+        ii.createGeneral(II)
+        return ii
+
+    def _projectedlinesearch(self, mesh1d, s, ds, ella, r):
+        '''Do projected line search as in Bueler 2021, Chapter 12, equations
+        (12.18) and (12.19).  Starts from s and tries direction ds.
+        Returns s which satisfies an Armijo criterion using the CP norm.'''
+        sigma = 1.0e-4
+        F0 = self.cpresidualnorm(mesh1d, s, r)
+        beta = 1.0
+        lsmax = 12
+        for l in range(lsmax):
+            sls = s.copy() + beta * ds                 # apply direction
+            np.maximum(sls, mesh1d.b, out=sls)         # project
+            rls = self.residual(mesh1d, sls, ella)     # new residual
+            Fls = self.cpresidualnorm(mesh1d, sls, rls)
+            if Fls <= (1.0 - sigma * beta) * F0:       # Armijo
+                print('      line search: %d reductions' % l)
+                return sls
+            if l == lsmax - 1:
+                print('WARNING: line search failure')
+                return sls
+            beta *= 0.5                                # next beta
+
+    def _newtonrs(self, mesh1d, s, ella, r):
+        '''Do one in-place reduced-space Newton step on s(x).  PETSc KSP solves
+        the reduced linear step equations
+           Jac_{I,I}(s) ds_I = - r_I(s)
+        Also ds_A = 0 to form search direction ds.  Then we do projected line
+        search to update s.'''
+        # get Jacobian approximation (PETSc Mat)
+        Jac, negd = self._fdjacobianband(mesh1d, s, ella, currentr=r)
+        # get indices of changable (inactive) nodes (PETSc IS)
+        ii = self._changableset(mesh1d, s, r)
+        #ii.view()
+        iione = np.array(ii, dtype=int) + 1  # 1-based for indexing nodes
+        mA = ii.getSize()
+        # extract changable submatrix from Jacobian
+        JacII = Jac.createSubMatrix(ii, iscol=ii)
+        #JacII.view()
+        mII, nII = JacII.getSize()
+        print('      size(J_{I,I}) = %d x %d' % (mII,nII))
+        assert mA == mII == nII >= 1
+        # right-hand side of Newton system
+        rhs = PETSc.Vec()
+        rhs.create(PETSc.COMM_WORLD)
+        rhs.setSizes(mA)
+        rhs.setFromOptions()
+        rhs.setValues(range(mA), -r[iione])
+        rhs.assemblyBegin()
+        rhs.assemblyEnd()
+        dsII = rhs.duplicate()
+        # solve Newton system for step ds
+        #   (note solver feedback works, for example: -newt_ksp_view
+        #    -newt_ksp_converged_reason -newt_ksp_view_mat -newt_ksp_view_rhs
+        #    -newt_pc_type svd -newt_pc_svd_monitor)
         ksp = PETSc.KSP()
         ksp.create(PETSc.COMM_WORLD)
         ksp.setOptionsPrefix('newt_')
-        ksp.setOperators(A=Jac, P=Jac)
+        ksp.setOperators(A=JacII, P=JacII)
         ksp.setType('preonly')
         ksp.getPC().setType('lu')
         ksp.setFromOptions()
-        # solve Newton step
-        ds = mr.duplicate()
-        ksp.solve(mr, ds)
-        #ds.view()
-        # FIXME: do projected line search
-        s[II] += ds
+        ksp.solve(rhs, dsII)
+        #dsII.view()
+        # search direction has ds=0 where not changable
+        ds = mesh1d.zeros()
+        ds[iione] = dsII[:]
+        # get updated s from line search
+        s[:] = self._projectedlinesearch(mesh1d, s, ds, ella, r)
+        self._checkadmissible(mesh1d, s, mesh1d.b)
         return negd
