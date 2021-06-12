@@ -111,8 +111,10 @@
 \vspace{-1mm}
 \begin{itemize}
 \item glacier geometry which evolves according to climate
-\item take simplest such problem (grounded, nonsliding, isothermal)
-\item for simplicity, assume time-independent data on fixed $\Omega \subset \RR^2$:
+    \begin{itemize}
+    \item simplest such problem (grounded, nonsliding, isothermal)
+    \end{itemize}
+\item assume time-independent data on fixed $\Omega \subset \RR^2$:
     \begin{itemize}
     \item (net) climatic mass balance $a$ \hfill $\gets$ \emph{$a>0$ for accumulation}
     \item bed elevation $b$
@@ -147,7 +149,10 @@
             \begin{itemize}
             \item $s$ well-defined (no overhangs)
             \item $s=b$ where ice is not present
-            \item $s$ is defined on all of $\Omega$
+
+                \begin{itemize}
+                \item[{\color{black} $\circ$}] $s$ is defined on all of $\Omega$
+                \end{itemize}
             \end{itemize}
         \end{itemize}
     \column{0.45\textwidth}
@@ -186,7 +191,7 @@ s - b &\ge 0 && \text{on $\Omega$} & \tikzmark{ncptop} \\
     \begin{itemize}
     \item Glen-law effective viscosity with $\text{p}=(1/\text{n})+1(=4/3)$:
       $$\nu_\eps = \frac{1}{2} B_n \left(|D\bu|^2 + \eps\, D_0^2\right)^{(\pp-2)/2}$$
-    \item \emph{count the 3 nonlinearities}
+    \item \alert{\emph{the 3 nonlinearities}}
     \end{itemize}
 \end{itemize}
 \end{frame}
@@ -229,7 +234,7 @@ s - b &\ge 0 && \text{on $\Omega$} \\
     \item and Wirbel \& Jarosch (2020) (\emph{semi-coupled, fake ice layer})
     \item none are scalable (\emph{single level})
     \end{itemize}
-\item what are people doing instead?
+\item what are people doing instead, to get science?
     \begin{itemize}
     \item \alert{explicit time-stepping with $s \ge b$ enforced by truncation}
     \item often with shallow approximations, e.g.~PISM run below
@@ -270,7 +275,7 @@ extract trace $\bus$, then extend $\Phi(s) = -\bus \cdot \bn_s$ by zero to $\Ome
     \end{itemize}
 \item $\therefore$ \, $\phi(s)$ is well-defined if $s$ is piecewise $C^1$
     \begin{itemize}
-    \item a regularity conjecture
+    \item which is a regularity conjecture
     \end{itemize}
 \end{itemize}
 
@@ -315,17 +320,20 @@ for all $r \in \mathcal{K}$
 \item $\Phi : \mathcal{K} \subset W^{1,\qq}(\Omega) \to W^{-1,\pp}(\Omega)$ where $\qq=4$ and $\pp=4/3$
 \item the Stokes stress balance is nonlocal so $\Phi$ is ``dense''
     \begin{itemize}
-    \item $\Phi$ is some kind of integral operator? (\emph{convolve with Stokeslets})
-    \item $\Phi$ is short range? (\emph{concentrated near the diagonal})
+    \item $\Phi$ is some kind of integral operator (\emph{convolve with Stokeslets})
+    \item $\Phi$ is short range (\emph{concentrated near the diagonal})
     \end{itemize}
 \item $\Phi \approx \Phi_{\text{SIA}}$ for shallow glaciers, a differential operator:
     $$\Phi_{\text{SIA}}(s) = - \frac{\gamma}{\qq} (s-b)^{\qq} |\grad_2 s|^{\qq} - \grad_2 \cdot\left[\frac{\gamma}{\qq+1} (s-b)^{\qq+1} |\grad_2 s|^{\qq-2} \grad_2 s\right]$$
 
     \begin{itemize}
-    \item $\Phi$ is diffusive in the large!
-    \item $\Phi$ is degenerate at the ice margin!
+    \item $\Phi$ is diffusive in the large
+    \item $\Phi$ is degenerate at the ice margin
     \end{itemize}
-\item yet common to say $\Phi$ is hyperbolic because SKE is equivalent to a transport equation for thickness: $H_t + \overline{\bu}\, \grad H = a$
+\item yet common to say
+    \begin{itemize}
+    \item $\Phi$ is hyperbolic because SKE is a transport equation for thickness: $H_t + \overline{\bu}\, \grad H = a$
+    \end{itemize}
 \end{itemize}
 \end{frame}
 
