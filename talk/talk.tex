@@ -1,4 +1,4 @@
-\documentclass[usepdftitle=false]{beamer}
+\documentclass[usepdftitle=false,usenames,dvipsnames]{beamer}
 
 \usetheme{focus} % see https://github.com/elauksap/focus-beamertheme
 % Add option [numbering=none] to disable the footer progress bar
@@ -65,17 +65,39 @@
 
 \author{Ed Bueler}
 
-\titlegraphic{\includegraphics[width=0.7\textwidth]{figs/titleextruded.png} \\ \vspace{-3mm} \includegraphics[width=0.15\textwidth]{figs/uafbw.png}}
+\titlegraphic{\includegraphics[width=0.7\textwidth]{figs/titleextruded.png} \\ \vspace{-8mm} \includegraphics[width=0.2\textwidth]{figs/uafbw.png}}
 
 %\institute{University of Alaska Fairbanks}
 
-\date{\phantom{foo} \bigskip \bigskip \bigskip \\ SIAM GS21 \\ with assistance from Lawrence Mitchell}
+\date{\phantom{foo} \bigskip \bigskip \bigskip \\ SIAM GS21}
 
 
 \begin{document}
 
 \begin{frame}
 	\maketitle
+\end{frame}
+
+
+\begin{frame}{overview}
+\Large
+\begin{enumerate}
+\item explain the problem I'm obsessed with
+\item discuss the current barriers to success
+\end{enumerate}
+
+\normalsize
+\vspace{10mm}
+\begin{itemize}
+\item<2> work in progress, with no results yet
+    \begin{itemize}
+    \item<2> low expectations, please
+    \end{itemize}
+\item<2> I am giving this talk at 4am my time
+    \begin{itemize}
+    \item<2> ditto
+    \end{itemize}
+\end{itemize}
 \end{frame}
 
 
@@ -320,16 +342,16 @@ $$\ip{\Phi^h(s^h) - a}{r^h - s^h} \ge 0 \qquad \text{for all $r^h \in \mathcal{K
 \item[]
     \begin{itemize}
     \item $P_1$ because of low regularity at free boundary
-    \item evaluate $\Phi^h(s^h)=-\bu|_{s^h}\cdot\bn_{s^h}$ using numerical solution of Stokes problem $F_{\Lambda_{s^h}}(\bu^h,p^h)=0$
+    \item evaluate $\Phi^h(s^h)=-\bu|_{s^h}\cdot\bn_{s^h}$ by solving Stokes problem $F_{\Lambda_{s^h}}(\bu^h,p^h)=0$
     \end{itemize}
 \item seeking a solver which is:
     \begin{itemize}
     \item \alert{robust}
-    \item \alert{optimal} $O(m)$ work over $m$ degrees of freedom in $\mathcal{V}^h$
+    \item \alert{near optimal} $O(m^{1+\eps})$ work over $m$ degrees of freedom in $\mathcal{V}^h$
         \begin{itemize}
-        \item[{\color{black} $\circ$}] requires multigrid
+        \item[{\color{black} $\circ$}] requires multigrid \dots more below
         \end{itemize}
-    \item \emph{for now these are aspirations \dots}
+    \item \emph{these are aspirations}
     \end{itemize}
 \end{itemize}
 \end{frame}
@@ -344,9 +366,7 @@ $$\ip{\Phi^h(s^h) - a}{r^h - s^h} \ge 0 \qquad \text{for all $r^h \in \mathcal{K
     \item which solution variable?
     \item surface elevation ($s$) or thickness ($H$)?
     \item interior smoothness means $s$ is better for multigrid
-        \begin{itemize}
-        \item need to \emph{not} have ``fake ice'' where $s=b$
-        \end{itemize}
+    \item bed roughness means \emph{not} having ``fake ice'' where ice-free ($s=b$)
     \end{itemize}
 \column{0.65\textwidth}
     \includegraphics[width=\textwidth]{figs/giscross.png}
@@ -354,35 +374,147 @@ $$\ip{\Phi^h(s^h) - a}{r^h - s^h} \ge 0 \qquad \text{for all $r^h \in \mathcal{K
 \end{frame}
 
 
-\begin{frame}{multilevel constraint decomposition}
+\begin{frame}{multilevel constraint decomposition (MCD)}
+
+\begin{block}{strategy}
+decompose $\mathcal{K}^h$ using mesh hierarchy and then apply V-cycles
+\end{block}
+
+\bigskip
+\begin{columns}
+\column{0.52\textwidth}
+\begin{itemize}
+\item mesh levels over $\Omega$:
+
+$\mathcal{T}^0 \text{ (coarse) to } \mathcal{T}^J$
+\item given fine-level iterate $s^J$
+\item \emph{defect constraint} $\chi^J = b^J - s^J$
+\item \emph{monotone restriction} $R^\oplus$
+
+\item defect constraints on levels:
+
+$\chi^j = R^\oplus \chi^{j+1}$
+\item admissible perturbations:
+
+$z^j \ge \chi^j \iff s^j + z^j \ge b^j$
+\end{itemize}
+\column{0.48\textwidth}
+\includegraphics[width=1.05\textwidth]{figs/decompclassical.png}
+\end{columns}
+\end{frame}
+
+
+\begin{frame}{multilevel constraint decomposition (MCD)}
+
+\begin{block}{strategy}
+decompose $\mathcal{K}^h$ using mesh hierarchy and then apply V-cycles
+\end{block}
 
 \begin{itemize}
-\item FIXME
+\item this strategy gives $O(m\log m)$ solver for Laplacian obstacle problem (Tai, 2003)
+    \begin{itemize}
+    \item using Gauss-Seidel smoother
+    \item \only<1>{a multilevel VI strategy is the only hope for (near) optimality}\only<2>{{\color{ForestGreen} a multilevel VI strategy is the only hope for (near) optimality}}
+    \item for nonlinear VI, need additional FAS strategy {\Large\strut} \only<2>{{\color{ForestGreen} \, {\Large $\checkmark$}}}
+    \end{itemize}
+\item for IGP a single residual evaluation requires solving Stokes
+    \begin{itemize}
+    \item expensive but implemented {\Large\strut} \only<2>{{\color{ForestGreen} \, {\Large $\checkmark$}}}
+    \item Stokes is nonlocal
+
+\smallskip
+    \item Jacobian dense
+
+\smallskip
+    \item pointwise smoothers (GS, Jacobi) use diagonal entries
+        \begin{itemize}
+        \item<2>[{\color{black} $\circ$}] \alert{which apparently fail {\Large \, :-(}}
+        \end{itemize}
+    \end{itemize}
 \end{itemize}
-
-\includegraphics[width=0.5\textwidth]{figs/decompclassical.png}
-
-\input{tikz/vcycle.tex}
 \end{frame}
 
 
 \begin{frame}{Stokes on an extruded mesh}
 
-\begin{itemize}
-\item FIXME
-\end{itemize}
-
+\begin{center}
 \includegraphics[width=0.8\textwidth]{figs/extruded.png}
-\end{frame}
-
-
-\begin{frame}{smoothers}
+\end{center}
 
 \begin{itemize}
-\item FIXME
+\item for each base mesh level $\mathcal{T}^j$ in FAS V-cycle,
+\item evaluate the residual $\Phi(s^j) - a^j$ in the VI:
+    \begin{itemize}
+    \item source $a^j$ arises from FAS formula
+    \item extrude to current geometry $s^j$ (with or without cliffs)
+    \item no extrusion where ice free\footnote{thanks to Lawrence Mitchell for enabling this Firedrake capability}
+    \item solve Stokes problem $F_{\Lambda_{s^j}}(\bu^j,p^j)=0$ (Isaac et al, 2015)
+    \item compute $\Phi(s^j) = - \bu^j|_{s^j} \cdot \bu_{s^j}$ and subtract $a^j$
+    \end{itemize}
 \end{itemize}
 \end{frame}
 
+
+\begin{frame}{smoother options}
+
+\begin{itemize}
+\item \only<1>{now all the evil is in the smoother}\only<2>{\alert{now all the evil is in the smoother}}
+\item options from weaker to stronger:
+    \begin{itemize}
+    \item nonlinear Richardson?
+        \begin{itemize}
+        \item[{\color{black} $\circ$}] not promising because degenerate
+        \end{itemize}
+    \item nonlinear pointwise smoothers (GS, Jacobi)?
+        \begin{itemize}
+        \item[{\color{black} $\circ$}] \only<1>{extremely expensive because residual nonlocal} \only<2>{\alert{extremely expensive because residual nonlocal}}
+        \item[{\color{black} $\circ$}] seem to fail anyway
+        \end{itemize}
+    \item nonlinear \texttt{PCPatch} smoothers?
+        \begin{itemize}
+        \item[{\color{black} $\circ$}] what does this even mean?
+        \end{itemize}
+    \item exploit SIA analogy?
+        \begin{itemize}
+        \item[{\color{black} $\circ$}] pointwise smoothers work for SIA
+        \end{itemize}
+    \item reduced-space Newton using banded Jacobian approximation?
+        \begin{itemize}
+        \item[{\color{black} $\circ$}] finite-difference Jacobian entries using pseudo-coloring
+        \end{itemize}
+    \end{itemize}
+
+\bigskip
+\item<2> status report: \alert{nothing works well so far}
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}{conclusion}
+
+\begin{itemize}
+\item \emph{GOAL 1}:\, no shallow approximations in flow physics {\Large \strut} \only<2-3>{{\Large \color{ForestGreen} $\checkmark$}}
+    \begin{itemize}
+    \item<2-3> my Stokes solver is working in Firedrake on extruded mesh
+    \item<2-3> solver choices by (Isaac et al, 2015) putatively optimal
+    \end{itemize}
+\item \emph{GOAL 2}:\, beat explicit time-stepping and enable paleo {\Large \strut} \only<3>{\Large \alert{:-(}}
+    \begin{itemize}
+    \item<2-3> problem is
+        \begin{itemize}
+        \item<2-3>[{\color{black} $\circ$}] constrained (nonlinear VI on $\mathcal{K} = \{s\ge b\}$)
+        \item<2-3>[{\color{black} $\circ$}] diffusive in the large (Stokes $\approx$ SIA)
+        \item<2-3>[{\color{black} $\circ$}] nonlocal (Stokes)
+        \end{itemize}
+    \item<2-3> {\color{ForestGreen} MCD FAS path to optimality for the VI}
+    \item<3> \alert{stuck on finding a robust optimal smoother}
+    \end{itemize}
+
+\normalsize
+\bigskip\bigskip
+\item<3> \emph{thanks for your attention \dots questions?}
+\end{itemize}
+\end{frame}
 
 %\begin{block}{Block}
 %\begin{alertblock}{Alert block}
@@ -402,26 +534,40 @@ $$\ip{\Phi^h(s^h) - a}{r^h - s^h} \ge 0 \qquad \text{for all $r^h \in \mathcal{K
 
 \appendix
 
-\begin{frame}{Some references}
+\begin{frame}{Some references 1}
+%\nocite{*}
 %\bibliography{../paper/msg.bib}
 %\bibliographystyle{plain}
 
 \begin{thebibliography}{1}
-\bibitem{BuelerMitchell2022}
-E.~Bueler and L.~Mitchell. \textbf{Multilevel computation of glacier geometry from Stokes dynamics.} in preparation
-
-\hrulefill
-
 \bibitem{Brinkerhoffetal2017}
 D.~Brinkerhoff, M.~Truffer, and A.~Aschwanden. \textbf{Sediment transport drives tidewater glacier periodicity.} {\em Nature Communications}, 8(1):1--8, 2017.
 
+\bibitem{Bueler2016}
+E.~Bueler. \textbf{Stable finite volume element schemes for the shallow-ice approximation.} {\em J. Glaciol.}, 62 (232):230--242, 2016.
+
 \bibitem{IsaacStadlerGhattas2015}
 T.~Isaac, G.~Stadler, and O.~Ghattas.  \textbf{Solution of nonlinear Stokes equations \dots with application to ice sheet dynamics.} {\em SIAM J. Sci. Comput.}, 37(6):B804--B833, 2015.
+
+\bibitem{JouvetBueler2012}
+G.~Jouvet and E.~Bueler. \textbf{Steady, shallow ice sheets as obstacle problems: well-posedness and finite element approximation.} {\em SIAM J. Appl. Math.}, 72(4):1292--1314, 2012.
+
+\bibitem{JouvetRappaz2011}
+G.~Jouvet and J.~Rappaz. \textbf{Analysis and finite element approximation of a nonlinear stationary {S}tokes problem arising in glaciology.} {\em Advances in Numerical Analysis}, 2011.
+\end{thebibliography}
+\end{frame}
+
+
+\begin{frame}{Some references 2}
+\begin{thebibliography}{1}
+\bibitem{Tai2003}
+X.-C. Tai. \textbf{Rate of convergence for some constraint decomposition methods for nonlinear variational inequalities.} {\em Numer. Math.}, 93(4):755--786, 2003.
 
 \bibitem{WirbelJarosch2020}
 A.~Wirbel and A.~H. Jarosch. \textbf{Inequality-constrained free-surface evolution in a full {S}tokes ice flow model \dots} {\em Geosci. Model Dev.}, 13(12):6425--6445, 2020.
 \end{thebibliography}
 \end{frame}
+
 
 \begin{frame}{extra}
 
