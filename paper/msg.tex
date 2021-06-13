@@ -368,11 +368,11 @@ The only role of the extruded mesh in solving \eqref{eq:fesigpweakform} is in th
 
 \section{Smoothers} \label{sec:smoothers}
 
-In this section we propose solvers for \eqref{eq:fesigpweakform}, namely certain projected and nonlinear iterations which are variants of the Gauss-Seidel and Jacobi methods, but made suitable for VIs \cite{KinderlehrerStampacchia1980}.  Given a current surface elevation $s^h\in \mathcal{K}^h$, these iterations sweep through the $m$ interior vertices ($P_1$ nodes) of $\mathcal{T}$ in a fixed order, solving one-dimensional VI problems.  While these iterations are adequate smoothers in a multilevel method (next section), they converge slowly if used as single-level methods.  Because of the non-locality and density of the IDO $\Phi^h$ (Section \ref{sec:weakido}), we must make careful approximations in order to retain adequate per-iteration performance.
+In this section we consider single-level solvers for \eqref{eq:fesigpweakform}, namely certain nonlinear iterations which are made suitable for VIs \cite{KinderlehrerStampacchia1980}.  While these iterations are, in some cases, adequate smoothers in a multilevel method (next section), they converge slowly if used directly as solvers.  Because of the non-locality and density of the IDO $\Phi^h$ (Section \ref{sec:weakido}), we must make careful approximations in order to retain adequate per-iteration performance.  These iterative solvers, \emph{smoothers} from now on, can be categorized by the number of nodes which are adjusted at each iteration: pointwise, patch-type, and global.
 
-Denote an arbitrary vertex of $\mathcal{T}$ by $(x_j,y_j)$ and let $\psi_j \in \mathcal{V}^h$ be the corresponding $P_1$ hat function, with $\psi_j(x_k,y_k)=\delta_{jk}$ \cite{Elmanetal2014}.  Let $\mathcal{W}_+^h = \{t^h \in \mathcal{V}^h \,:\, t^h \ge 0 \text{ and } t^h|_{\partial\Omega} = 0\}$.  Let $i=0,\dots,m-1$ index the interior vertices of $\mathcal{T}$, so $(x_i,y_i) \notin \partial\Omega$.  Note that $\psi_i \in \mathcal{W}_+^h$, and $s^h + c \psi_i \in \mathcal{K}^h$ if and only if $c\ge \beta_i^{s^h} = b^h(x_i,y_i) - s^h(x_i,y_i)$.  We call $\beta_i^{s^h}$ the pointwise defect obstacle \cite{GraeserKornhuber2009} for $s^h$.
+Suppose there are $m$ interior vertices ($P_1$ nodes) of $\mathcal{T}$, denote a vertex in $\mathcal{T}$ by $(x_j,y_j)$, and let $\psi_j \in \mathcal{V}^h$ be the corresponding $P_1$ hat function, with $\psi_j(x_k,y_k)=\delta_{jk}$.  Let $s^h\in \mathcal{K}^h$ be the current surface elevation iterate.  The Richardson pointwise smoother sweeps through the nodes and subtracts-off the residual: $s^h \gets s^h - \alpha (F^h(s^h)-a)$ where $\alpha>0$ must be chosen so that the iteration converges.  By contrast the Gauss-Seidel, and Jacobi pointwise smoothers sweep through the nodes solving one-dimensional VI problems for a value $c\in \RR$ (below).  If each pointwise update $s^h \gets s^h + c \psi_i$ is done immediately then the smoother is of Gauss-Seidel (GS) type, also called serial or multiplicative, while a (parallel, additive) Jacobi smoother computes and stores solutions $c$ at every node before doing any updates.  In linear problems GS generally converges in about half as many iterations \cite{Greenbaum1997}.
 
-The one-dimensional VI at interior node $i$ is derived from the discrete SIGP \eqref{eq:fesigpweakform} using $r = s^h+\gamma \psi_i$ and $s = s^h+c \psi_i$ for some scalars $\gamma,c$.  Specifically, we seek $c \ge \beta_i^{s^h}$ such that
+To be more precise, let $\mathcal{W}_+^h = \{t^h \in \mathcal{V}^h \,:\, t^h \ge 0 \text{ and } t^h|_{\partial\Omega} = 0\}$.  If $i=0,\dots,m-1$ index the interior vertices of $\mathcal{T}$, note that $\psi_i \in \mathcal{W}_+^h$, and that $s^h + c \psi_i \in \mathcal{K}^h$ if and only if $c\ge \beta_i^{s^h} = b^h(x_i,y_i) - s^h(x_i,y_i)$.  (One might call $\beta_i^{s^h}$ the pointwise defect obstacle \cite{GraeserKornhuber2009} for $s^h$.)  The one-dimensional VI at interior node $i$ is derived from the discrete SIGP \eqref{eq:fesigpweakform} by replacements $s^h \to s^h+c \psi_i$, $r^h \to r^h + \gamma \psi_i$ for some scalars $c,\gamma$.  We then seek $c \ge \beta_i^{s^h}$ such that
 \begin{equation}
 F^h(s^h+c \psi_i)[(s^h+\gamma \psi_i) - (s^h+c \psi_i)] \ge \ip{a}{(s^h+\gamma \psi_i) - (s^h+c \psi_i)} \label{eq:fepointwiseviEARLY}
 \end{equation}
@@ -380,43 +380,54 @@ for all $\gamma \ge \beta_i^{s^h}$.  Let
 \begin{equation}
 \rho_i(s^h; c) = F^h(s^h+c\psi_i)[\psi_i] - \ip{a}{\psi_i} \label{eq:ferhoi}
 \end{equation}
-be the point-wise residual function, and observe that \eqref{eq:fepointwiseviEARLY} simplifies to
+be the pointwise residual function, and observe that \eqref{eq:fepointwiseviEARLY} simplifies to
 \begin{equation}
 (\gamma - c) \,\rho_i(s^h; c) \ge 0. \label{eq:fepointwisevi}
 \end{equation}
-The smoother will approximately solve \eqref{eq:fepointwisevi} for $c$ the smoother, and then update $s^h \gets s^h + c \psi_i$.  Observe that admissibility is preserved because $s^h+c \psi_i \in \mathcal{K}^h$ when $c \ge \beta_i^{s^h}$.
+The smoother approximately solves \eqref{eq:fepointwisevi} for $c$ and then updates $s^h \gets s^h + c \psi_i$ either in serial or parallel.  Observe that admissibility is preserved because $s^h+c \psi_i \in \mathcal{K}^h$ when $c \ge \beta_i^{s^h}$.
 
-If $\rho_i(s^h; c)$ were linear and increasing in $c$, e.g.~$\rho_i(s^h; c) = \rho_i(s^h; 0) + \alpha c$ with $\alpha > 0$, then the solution to \eqref{eq:fepointwisevi} would be given by the simple formula $c = \max\left\{-\rho_i(s^h; 0)/\alpha, \beta_i^{s^h}\right\}$ \cite{GraeserKornhuber2009}.  In fact $\rho_i(s^h; c)$ is nonlinear, and we will linearize
+If $\rho_i(s^h; c)$ were linear and increasing in $c$, e.g.~$\rho_i(s^h; c) = \rho_i(s^h; 0) + \alpha c$ with $\alpha > 0$, then the solution to VI \eqref{eq:fepointwisevi} would be given by the simple formula $c = \max\left\{-\rho_i(s^h; 0)/\alpha, \beta_i^{s^h}\right\}$ \cite{GraeserKornhuber2009}.  In fact $\rho_i(s^h; c)$ is nonlinear, and we will linearize
 \begin{equation}
-\rho_i(s^h; c) \approx \rho_i(s^h; 0) + c\, \rho_i'(s^h; 0), \label{eq:rhoapprox}
+\rho_i(s^h; c) \approx \rho_i(s^h; 0) + c\, \rho_i'(s^h; 0). \label{eq:rhoapprox}
 \end{equation}
-and at each node where $\rho_i'(s^h; 0) > 0$ we will do one projected Newton step using the simple formula.  If $\rho_i'(s^h; 0) \le 0$, so that the model has degenerated in the sense that the linearized, pointwise operator is not acting elliptically with respect to a perturbation, we set $c = \beta_i^{s^h}$ to remove the ice at that location.  % FIXME TOO AGGRESSIVE?
+At each node where $\rho_i'(s^h; 0) > 0$ we will do one projected Newton step using the simple formula.  However, if $\rho_i'(s^h; 0) \le 0$, so that the model has degenerated in the sense that the linearized, pointwise operator is not acting elliptically with respect to a perturbation, we set $c = \beta_i^{s^h}$ to remove the ice at that location.  % FIXME TOO AGGRESSIVE?
 
-Because the interior PDE in the shallow, flat-bed model is elliptic, it follows that $\rho_i'(s^h; 0) > 0$ on the icy part of $\Omega$ \cite{JouvetBueler2012}.  However, for the full Glen-Stokes model there is no such guarantee to our knowledge.
-
-Note that the derivative $\rho_i'(s^h; 0)$, which is also a diagonal entry of the Jacobian of $F^h$, can be approximated by a finite difference,
-\begin{equation}
-\rho_i'(s^h; 0) = (F^h)'(s^h)[\psi_i,\psi_i] \approx \frac{\rho_i(s^h; \eps) - \rho_i(s^h; 0)}{\eps}.  \label{eq:rhofd}
-\end{equation}
-Literal use of \eqref{eq:rhofd} is very expensive because each value $\rho_i(s^h; \eps)$ requires a separate Glen-Stokes computation for the residual.
-
-If each pointwise update $s^h \gets s^h + c \psi_i$ is done immediately then the smoother is of Gauss-Seidel (GS) type, also called serial or multiplicative, while a (parallel, additive) Jacobi smoother computes and stores solutions $c$ at every node $i$ before doing any updates.  In linear problems GS generally converges in about half as many iterations \cite{Greenbaum1997}, but here a more glaring difference dominates, namely that GS imposes the expense of yet more residual evaluations.  Nonetheless, the GS iteration using a single Newton step and approximation \eqref{eq:rhofd} is a well-defined smoother, so we state it in Pseudocode \ref{pc:pngsslow}.  It is given in a form which also allows over-relaxation ($\id{omega} > 1$) or under-relaxation ($\id{omega} < 1$) if desired.  Note that the Glen-Stokes problem \eqref{eq:glenstokesweak} is solved $2m$ times per application of this function.
+Using a single Newton step and approximation \eqref{eq:rhofd}, GS is a well-defined smoother, so we state it in Pseudocode \ref{pc:pngsslow}.  It is given in a form which also allows over-relaxation ($\id{omega} > 1$) or under-relaxation ($\id{omega} < 1$) if desired.  Note that the Glen-Stokes problem \eqref{eq:glenstokesweak} is solved $2m$ times per application of this function.
 
 \begin{pcode}[ht]
 \begin{pseudo*}
-\pr{pngs\_slow}(s^h,b^h,\id{eps}=1.0,\id{omega}=1.0)\text{:} \\+
+\pr{pngs}(s^h,b^h,\id{omega}=1.0)\text{:} \\+
     \ct{check admissibility: $s^h \ge b^h$} \\
     for $i = 0,\dots,m-1$ \\+
-        $\alpha_i = (\rho_i(s^h; \eps) - \rho_i(s^h; 0))/\eps$  \qquad\qquad \ct{Jacobian diagonal entry} \\
+        $\alpha_i = \rho_i'(s^h; 0)$  \qquad\qquad \ct{Jacobian diagonal entry} \\
         if $\alpha_i > 0$ \\+
             $c_i = - \rho_i(s^h; 0) / \alpha_i$ \\
             $(s^h)_i \gets \max\{(s^h)_i + \id{omega}\,c_i, (b^h)_i\}$ \\-
         else \\+
             $(s^h)_i \gets \beta_i$ \qquad\qquad \ct{non-elliptic case}
 \end{pseudo*}
-\caption{Projected nonlinear GS iteration, an expensive in-place smoother using a finite-difference (FD) derivative for the Jacobian diagonal.}
+\caption{Projected nonlinear GS iteration, a conceptual in-place, pointwise smoother which solves one-dimensional VIs \eqref{eq:fepointwisevi} in serial.}
 \label{pc:pngsslow}
 \end{pcode}
+
+Patch-type smoothers \cite{Farrelletal2019} have to our knowledge not been used for VI problems before, but they would sweep through the nodes solving local VIs of small dimension $\ell>1$, and again there would be serial and parallel versions.  However, we first consider the opposite extreme from a pointwise smoother, namely a global smoother in which all the degrees of freedom are coupled together into an algebraic system.
+
+FIXME reduced-space Newton solver using a banded Jacobian approximation
+
+
+\section{Approximate Jacobians} \label{sec:jacobians}
+
+The above pseudocodes assume the accessibility of the diagonal of the Jacobian (pointwise smoothers) or of arbitrary entries (Newton solver).
+
+Because the interior PDE in the SIA is elliptic, it follows that $\rho_i'(s^h; 0) > 0$ on the icy part of $\Omega$ \cite{JouvetBueler2012}, but for the full Glen-Stokes model there is no such guarantee to our knowledge.  Note that the derivative $\rho_i'(s^h; 0)$, which is also a diagonal entry of the Jacobian of $F^h$, can be approximated by a finite difference,
+\begin{equation}
+\rho_i'(s^h; 0) = (F^h)'(s^h)[\psi_i,\psi_i] \approx \frac{\rho_i(s^h; \eps) - \rho_i(s^h; 0)}{\eps}.  \label{eq:rhofd}
+\end{equation}
+Literal use of \eqref{eq:rhofd} is very expensive because each value $\rho_i(s^h; \eps)$ requires a separate Glen-Stokes computation for the residual.
+
+A glaring difference between the GS and Jacobi smoothers now dominates.  Namely, GS imposes the expense of far more residual evaluations.
+
+FIXME finite-difference approximation using pseudo-coloring based on ice thicknesses or rather longitudinal coupling length \cite{KambEchelmeyer1986}
 
 To build a better smoother we return to the computation of the Jacobian diagonal entry $\rho_i'(s^h; 0)$.  Suppose we partition the support of $\psi_i$ into where there is ice and not,
 \begin{equation}
@@ -496,7 +507,7 @@ We finish this section with some observations which are supported by the results
 
 In fact, suppose $s^h$ gives the $P_1$ geometry of the ice which solves the discrete SIGP.  For each icy node $i$ in $\Omega$, i.e.~such that $(s^h)_i>(b^h)_i$, one can see that $\alpha_i>0$ if and only if the addition of a thin (e.g.~one meter) layer of ice to surface of the ice, covering the vicinity of node $i$ (e.g.~the support of $\psi_i$) will cause a dynamical response in which the surface goes down.  One can show this is so for the SIA theory \cite{JouvetBueler2012}, but, even for nonsliding ice, we know of no proof that the Glen-Stokes SIGP always gives $\alpha_i>0$ at icy locations.  It follows that pointwise smoothers like \pr{pngs\_slow} and \pr{pnj} are inherently fragile across a full range of glacier geometries.
 
-FIXME SMOOTHER POSSIBILITIES.  1 COLORING (PSEUDO-COLORING WITH LATERAL SEPARATION OF A FEW ICE THICKNESSES).  2 PATCH-TYPE WHICH SOLVE LOW-DIMENSIONAL VI.
+FIXME PSEUDO-COLORING WITH LATERAL SEPARATION OF A FEW ICE THICKNESSES
 
 
 \section{Multilevel constraint decomposition} \label{sec:mcdstokes}
@@ -635,6 +646,11 @@ As shown in Pseudocode \ref{pc:mcdn-solver}, we iterate MCDN V-cycles until the 
 \caption{The SIGP is solved in-place by iterating V-cycles (Pseudocode \ref{pc:mcdn-vcycle}) until the CP residual norm \eqref{eq:cpnorm} is small.}
 \label{pc:mcdn-solver}
 \end{pcode}
+
+
+\section{Performance models} \label{sec:perfmodels}
+
+FIXME
 
 
 \section{Results for steady geometry} \label{sec:results}
