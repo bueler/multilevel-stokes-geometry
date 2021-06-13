@@ -254,7 +254,7 @@ s - b &\ge 0 && \text{on $\Omega$} \\
 \end{frame}
 
 
-\begin{frame}{coupling via operator}
+\begin{frame}{rewrite coupling as operator}
 
 \begin{block}{ice dynamics operator}
 $\Phi : s \mapsto - \bus \cdot \bn_s$
@@ -275,7 +275,7 @@ extract trace $\bus$, then extend $\Phi(s) = -\bus \cdot \bn_s$ by zero to $\Ome
     \end{itemize}
 \item $\therefore$ \, $\phi(s)$ is well-defined if $s$ is piecewise $C^1$
     \begin{itemize}
-    \item which is a regularity conjecture
+    \item which is a regularity conjecture for the coupled theory
     \end{itemize}
 \end{itemize}
 
@@ -327,12 +327,12 @@ for all $r \in \mathcal{K}$
     $$\Phi_{\text{SIA}}(s) = - \frac{\gamma}{\qq} (s-b)^{\qq} |\grad_2 s|^{\qq} - \grad_2 \cdot\left[\frac{\gamma}{\qq+1} (s-b)^{\qq+1} |\grad_2 s|^{\qq-2} \grad_2 s\right]$$
 
     \begin{itemize}
-    \item $\Phi$ is diffusive in the large
+    \item $\Phi$ is elliptic in the large
     \item $\Phi$ is degenerate at the ice margin
     \end{itemize}
 \item yet common to say
     \begin{itemize}
-    \item $\Phi$ is hyperbolic because SKE is a transport equation for thickness: $H_t + \overline{\bu}\, \grad H = a$
+    \item $\Phi$ is advective because SKE is write-able as a transport equation for thickness: $H_t + \overline{\bu}\, \grad H = a$
     \end{itemize}
 \end{itemize}
 \end{frame}
@@ -340,7 +340,7 @@ for all $r \in \mathcal{K}$
 
 \begin{frame}{goal: robust and optimal IGP solver}
 
-\begin{block}{numerical goal}
+\begin{block}{numerical problem}
 given triangulation $\mathcal{T}$ of $\Omega$ and $P_1$ space $\mathcal{V}^h \subset W^{1,\qq}(\Omega)$, and convex set $\mathcal{K}^h = \{r^h \ge b^h\} \subset \mathcal{V}^h$, solve VI for $s^h \in \mathcal{K}^h$:
 
 $$\ip{\Phi^h(s^h) - a}{r^h - s^h} \ge 0 \qquad \text{for all $r^h \in \mathcal{K}^h$}$$
@@ -372,13 +372,23 @@ $$\ip{\Phi^h(s^h) - a}{r^h - s^h} \ge 0 \qquad \text{for all $r^h \in \mathcal{K
     \begin{itemize}
     \small
     \item which solution variable?
-    \item surface elevation ($s$) or thickness ($H$)?
-    \item interior smoothness means $s$ is better for multigrid
-    \item bed roughness means \emph{not} having ``fake ice'' where ice-free ($s=b$)
+        \begin{itemize}
+        \item surface elevation $s$?
+        \item thickness $H$?
+        \end{itemize}
     \end{itemize}
 \column{0.65\textwidth}
     \includegraphics[width=\textwidth]{figs/giscross.png}
 \end{columns}
+
+\bigskip
+\begin{itemize}
+\item \alert{smoothness suggests $s$ is better for multigrid}
+    \begin{itemize}
+    \item \emph{corollary}. do not put ``fake ice'' where $s=b$
+    \item only solve for ice velocity where there is ice!
+    \end{itemize}
+\end{itemize}
 \end{frame}
 
 
@@ -419,55 +429,58 @@ decompose $\mathcal{K}^h$ using mesh hierarchy and then apply V-cycles
 \end{block}
 
 \begin{itemize}
-\item this strategy gives $O(m\log m)$ solver for Laplacian obstacle problem (Tai, 2003)
+\item in V-cycle, on each level solve a VI:
+    $$\ip{\Phi^j(s^j + z^j) - a^j}{v^j - z^j} \ge 0 \quad \text{ for all $v^j \ge \chi^j$}$$
+
+\item this strategy gives an $O(m\log m)$ solver for the Laplacian obstacle problem (Tai, 2003)
     \begin{itemize}
-    \item using Gauss-Seidel smoother
-    \item \only<1>{a multilevel VI strategy is the only hope for (near) optimality}\only<2>{{\color{ForestGreen} a multilevel VI strategy is the only hope for (near) optimality}}
-    \item for nonlinear VI, need additional FAS strategy {\Large\strut} \only<2>{{\color{ForestGreen} \, {\Large $\checkmark$}}}
+    \item \only<1>{a multilevel VI strategy is the only hope for (near) optimality}\only<2>{\alert{a multilevel VI strategy is the only hope for (near) optimality}}
     \end{itemize}
-\item for IGP a single residual evaluation requires solving Stokes
+\item for IGP:
     \begin{itemize}
-    \item expensive but implemented {\Large\strut} \only<2>{{\color{ForestGreen} \, {\Large $\checkmark$}}}
-    \item Stokes is nonlocal
-
-\smallskip
-    \item Jacobian dense
-
-\smallskip
-    \item pointwise smoothers (GS, Jacobi) use diagonal entries
-        \begin{itemize}
-        \item<2>[{\color{black} $\circ$}] \alert{which apparently fail {\Large \, :-(}}
-        \end{itemize}
+    \item for nonlinear VI, need additional FAS strategy {\Large\strut} \only<2>{{\color{ForestGreen} \, {\Large $\checkmark$}}}
+    \item each residual is nonlocal and expensive {\Large\strut} \only<2>{{\color{ForestGreen} \, {\Large $\checkmark$}}}
+    \item<2> {\color{ForestGreen} strategy implemented}
     \end{itemize}
 \end{itemize}
 \end{frame}
 
 
-\begin{frame}{Stokes on an extruded mesh}
+\begin{frame}{Stokes on a Firedrake extruded mesh}
 
 \begin{center}
 \includegraphics[width=0.8\textwidth]{figs/extruded.png}
 \end{center}
 
+\begin{columns}
+\column{0.77\textwidth}
 \begin{itemize}
-\item for each base mesh level $\mathcal{T}^j$ in FAS V-cycle,
-\item evaluate the residual $\Phi(s^j) - a^j$ in the VI:
+\item V-cycle based on mesh hierarchy $\{\mathcal{T}^j\}$ over $\Omega$
+\item to evaluate the residual $\Phi(s^j) - a^j$ in the VI:
     \begin{itemize}
-    \item source $a^j$ arises from FAS formula
-    \item extrude to current geometry $s^j$ (with or without cliffs)
-    \item no extrusion where ice free\footnote{thanks to Lawrence Mitchell for enabling this Firedrake capability}
-    \item solve Stokes problem $F_{\Lambda_{s^j}}(\bu^j,p^j)=0$ (Isaac et al, 2015)
-    \item compute $\Phi(s^j) = - \bu^j|_{s^j} \cdot \bu_{s^j}$ and subtract $a^j$
+    \item extrude base mesh $\mathcal{T}^j$ to current geometry $s^j$
+        \begin{itemize}
+        \item[{\color{black} $\circ$}] with or without small cliffs
+        \end{itemize}
+    \item no extrusion where ice free
+        \begin{itemize}
+        \item[{\color{black} $\circ$}] thanks to Lawrence Mitchell for this capability
+        \end{itemize}
+    \item solve Stokes problem $F_{\Lambda_{s^j}}(\bu^j,p^j)=0$
+    \item compute $\Phi(s^j) = - \bu^j|_{s^j} \cdot \bn_{s^j}$ and subtract $a^j$
     \end{itemize}
 \end{itemize}
+\column{0.23\textwidth}
+\input{tikz/vcycle.tex}
+\end{columns}
 \end{frame}
 
 
 \begin{frame}{smoother options}
 
 \begin{itemize}
-\item \only<1>{now all the evil is in the smoother}\only<2>{\alert{now all the evil is in the smoother}}
-\item options from weaker to stronger:
+\item now all the evil is in the smoother
+\item smoother options from weaker to stronger:
     \begin{itemize}
     \item nonlinear Richardson?
         \begin{itemize}
@@ -475,16 +488,16 @@ decompose $\mathcal{K}^h$ using mesh hierarchy and then apply V-cycles
         \end{itemize}
     \item nonlinear pointwise smoothers (GS, Jacobi)?
         \begin{itemize}
-        \item[{\color{black} $\circ$}] \only<1>{extremely expensive because residual nonlocal} \only<2>{\alert{extremely expensive because residual nonlocal}}
-        \item[{\color{black} $\circ$}] seem to fail anyway
-        \end{itemize}
-    \item nonlinear \texttt{PCPatch} smoothers?
-        \begin{itemize}
-        \item[{\color{black} $\circ$}] what does this even mean?
+        \item[{\color{black} $\circ$}] \only<1>{GS extremely expensive because residual nonlocal} \only<2>{\alert{GS extremely expensive because residual nonlocal}}
+        \item[{\color{black} $\circ$}] seem to fail
         \end{itemize}
     \item exploit SIA analogy?
         \begin{itemize}
         \item[{\color{black} $\circ$}] pointwise smoothers work for SIA
+        \end{itemize}
+    \item nonlinear and nonlocal \texttt{PCPatch} smoothers?
+        \begin{itemize}
+        \item[{\color{black} $\circ$}] what does this even mean?
         \end{itemize}
     \item reduced-space Newton using banded Jacobian approximation?
         \begin{itemize}
@@ -492,8 +505,12 @@ decompose $\mathcal{K}^h$ using mesh hierarchy and then apply V-cycles
         \end{itemize}
     \end{itemize}
 
-\bigskip
-\item<2> status report: \alert{nothing works well so far}
+\medskip
+\item<2> status report:
+    \begin{itemize}
+    \item \alert{nothing works well so far}
+    \item NewtonRS and SIA-based smoothers most promising?
+    \end{itemize}
 \end{itemize}
 \end{frame}
 
@@ -506,7 +523,7 @@ decompose $\mathcal{K}^h$ using mesh hierarchy and then apply V-cycles
     \item<2-3> my Stokes solver is working in Firedrake on extruded mesh
     \item<2-3> solver choices by (Isaac et al, 2015) putatively optimal
     \end{itemize}
-\item \emph{GOAL 2}:\, beat explicit time-stepping and enable paleo {\Large \strut} \only<3>{\Large \alert{:-(}}
+\item \emph{GOAL 2}:\, beat explicit time-stepping and enable long-time paleo simulations {\Large \strut} \only<3>{\Large \alert{:-(}}
     \begin{itemize}
     \item<2-3> problem is
         \begin{itemize}
@@ -514,7 +531,7 @@ decompose $\mathcal{K}^h$ using mesh hierarchy and then apply V-cycles
         \item<2-3>[{\color{black} $\circ$}] diffusive in the large (Stokes $\approx$ SIA)
         \item<2-3>[{\color{black} $\circ$}] nonlocal (Stokes)
         \end{itemize}
-    \item<2-3> {\color{ForestGreen} MCD FAS path to optimality for the VI}
+    \item<2-3> {\color{ForestGreen} MCD FAS path to optimality for solving the VI}
     \item<3> \alert{stuck on finding a robust optimal smoother}
     \end{itemize}
 
