@@ -127,8 +127,7 @@ class ObstacleSmoother:
         np.maximum(s - self.args.omega * r, mesh1d.b, s)
         return []
 
-    def _gsslowsweep(self, mesh1d, s, ella, r,
-                     eps=1.0, dump=False):
+    def _gsslowsweep(self, mesh1d, s, ella, r, dump=False):
         '''Do in-place projected nonlinear Gauss-Seidel smoothing on s(x)
         where the diagonal entry d_i = F'(s)[psi_i,psi_i] is computed
         by VERY SLOW finite differencing of expensive residual calculations
@@ -141,11 +140,11 @@ class ObstacleSmoother:
         negd = []
         for j in range(1, len(s)-1): # loop over interior points
             sperturb = s.copy()
-            sperturb[j] += eps
+            sperturb[j] += self.args.fdeps
             if dump:
                 self.savestatenextresidual(self.args.o + '_gs_%d.pvd' % j)
             rperturb = self.residual(mesh1d, sperturb, ella)
-            d = (rperturb[j] - r[j]) / eps
+            d = (rperturb[j] - r[j]) / self.args.fdeps
             if d > 0.0:
                 s[j] = max(s[j] - self.args.omega * r[j] / d, mesh1d.b[j])
             else:
@@ -173,8 +172,7 @@ class ObstacleSmoother:
             print('      c = %d colors' % c)
         return c
 
-    def _jacobicolorsweep(self, mesh1d, s, ella, r,
-                          eps=1.0, dump=False):
+    def _jacobicolorsweep(self, mesh1d, s, ella, r, dump=False):
         '''Do in-place projected nonlinear Jacobi smoothing on s(x)
         where the diagonal entry d_i = F'(s)[psi_i,psi_i] is computed
         by SLOW finite differencing of expensive residual calculations, but
@@ -192,12 +190,12 @@ class ObstacleSmoother:
             # note jlist = [k+1,] (singleton) if k+1+c >= mesh1d.m+1
             jlist = np.arange(k+1, mesh1d.m+1, c, dtype=int)
             sperturb = s.copy()
-            sperturb[jlist] += eps
+            sperturb[jlist] += self.args.fdeps
             if dump:
                 self.savestatenextresidual(self.args.o + '_jacobi_%d.pvd' % j)
             rperturb = self.residual(mesh1d, sperturb, ella)
             for j in jlist:
-                d = (rperturb[j] - r[j]) / eps
+                d = (rperturb[j] - r[j]) / self.args.fdeps
                 if d > 0.0:
                     snew[j] = max(s[j] - self.args.omega * r[j] / d,
                                   mesh1d.b[j])
@@ -209,11 +207,11 @@ class ObstacleSmoother:
         s[:] = snew[:] # in-place copy
         return negd
 
-    def _fdjacobianband(self, mesh1d, s, ella,
-                        currentr=None, eps=20.0, dump=False, band=1):
+    def _fdjacobianband(self, mesh1d, s, ella, currentr=None, dump=False):
         '''Compute a banded approximation A of the Jacobian, using coloring,
-        by evaluating the residual function.  A is band-limited to [-band,band]
-        around the diagonal; band = 1 gives A tridiagonal.'''
+        by evaluating the residual function.  A is band-limited to [-b,b]
+        around the diagonal where b=args.band.  Note b=0 gives diagonal and
+        b=1 gives tridiagonal.  If b<0 then all entries of A are computed.'''
         if currentr is None:
             r = self.residual(mesh1d, s, ella)
         else:
@@ -224,6 +222,7 @@ class ObstacleSmoother:
         A.setFromOptions()
         A.setUp()  # FIXME need pre-allocation and parallel
         c = self._colors(mesh1d, s)
+        b = self.args.band
         # FIXME assert band + 2 <= c
         negd = []
         for k in range(c):
@@ -231,7 +230,7 @@ class ObstacleSmoother:
             nodelist = np.arange(k+1, mesh1d.m+1, c, dtype=int) # 1-based
             #    (note jlist = [k+1,] (singleton) if k+1+c >= mesh1d.m+1)
             sperturb = s.copy()
-            sperturb[nodelist] += eps
+            sperturb[nodelist] += self.args.fdeps
             if dump:
                 self.savestatenextresidual(self.args.o \
                                            + '_newtonrs_color%d.pvd' % k)
@@ -240,11 +239,11 @@ class ObstacleSmoother:
             for jnode in nodelist:
                 row = jnode - 1
                 # columns around diagonal
-                col = list(range(max(0, row-band), min(mesh1d.m, row+band+1)))
+                col = list(range(max(0, row - b), min(mesh1d.m, row + b + 1)))
                 val = []
                 for l in col:
                     lnode = l + 1
-                    ajl = (rperturb[lnode] - r[lnode]) / eps
+                    ajl = (rperturb[lnode] - r[lnode]) / self.args.fdeps
                     val.append(ajl)
                     if lnode == jnode and ajl < 0.0:
                         negd.append(jnode)

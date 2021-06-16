@@ -45,7 +45,7 @@ class GlenStokes:
         return fd.Function(Q1).interpolate(kres_ufl)
 
     def _regDu2(self, u):
-        reg = self.args.eps * self.Dtyp**2
+        reg = self.args.visceps * self.Dtyp**2
         return 0.5 * fd.inner(D(u), D(u)) + reg
 
     def _stresses(self, mesh, u):

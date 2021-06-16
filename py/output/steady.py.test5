@@ -1,0 +1,10 @@
+SWEEPSONLY with smoother "newtonrs" ...
+mesh: base has 32 intervals; 10 are ice-free
+      extruded has 22 x 4 icy quad elements
+      dimensions n_u = 850, n_p = 125
+   0: 1.6402e+00
+      c = 4 colors
+      size(J_{I,I}) = 21 x 21
+      line search: 5 reductions
+   1: 1.3555e+00
+iteration REACHED CYCLEMAX at step 1

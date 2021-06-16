@@ -58,6 +58,8 @@ References:
     allow_abbrev=False,  # bug in python 3.8 causes this to be ignored
     add_help=False)
 adda = parser.add_argument
+adda('-band', type=int, metavar='X', default=1,
+    help='bandwidth when approximating Jacobian (default=%(default)s)')
 adda('-coarsesweeps', type=int, default=1, metavar='N',
      help='smoother sweeps on coarsest grid (default=%(default)s)')
 adda('-cperthickness', type=float, default=3.0, metavar='X',
@@ -72,8 +74,8 @@ adda('-domeL', type=float, default=10.0e3, metavar='L',
      help='half-width of dome formula ice sheet (default=%(default)s m)')
 adda('-downsweeps', type=int, default=0, metavar='N',
      help='smoother sweeps before coarse-mesh correction (default=%(default)s)')
-adda('-eps', type=float, metavar='X', default=1.0e-2,  # FIXME sensitive
-    help='regularization used in viscosity (default=%(default)s)')
+adda('-fdeps', type=float, metavar='X', default=20,
+    help='distance used in finite-difference Jacobian (default=%(default)s)')
 adda('-Hmin', type=float, metavar='X', default=0.0,
     help='minimum ice thickness (default=%(default)s)')
 adda('-initialzero', action='store_true', default=False,
@@ -107,6 +109,8 @@ adda('-upsweeps', type=int, default=2, metavar='N',
      help='smoother sweeps after coarse-mesh correction (default=%(default)s)')
 adda('-viewperturb', type=int, default=None, nargs='+', metavar='N ...',
      help='view u,p perturbations at these nodes to .pvd file; use with -o')
+adda('-visceps', type=float, metavar='X', default=1.0e-2,  # FIXME sensitive
+     help='regularization used in viscosity (default=%(default)s)')
 args, unknown = parser.parse_known_args()
 if args.steadyhelp:
     parser.print_help()
