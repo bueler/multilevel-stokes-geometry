@@ -2,6 +2,9 @@
 '''Solve steady-geometry Stokes obstacle problem by a multilevel constraint decomposition method.'''
 
 # TODO:
+#  -2. add option to turn off coloring
+#  -1. add option to build full matrix (FD Jacobian) from initial state and stop
+#      (then test matrix splittings on it for their LFA smoother factor)
 #   0. fix the FD Jacobian scheme so that Hmin does not conflict
 #   1. widen the default sheet?; consider -domainlength 60.0e3 -domeL 25.0e3
 #   2. replace meshlevel.py with use of Firedrake interval mesh (requires

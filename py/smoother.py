@@ -28,7 +28,8 @@ class ObstacleSmoother:
         smooth = ObstacleSmoother(args, solver)
         r = smooth.residual(mesh1d, s, ella)
         smooth.smoothersweep(mesh1d, s, ella)
-    Note smoothersweep() calls a smoother from the dictionary self.smoothers.
+    Note smoothersweep() selects a smoother from the dictionary self.smoothers
+    according to the key args.smoother.
 
     There is also evaluation of the CP norm,
         irnorm = smooth.cpresidualnorm(mesh1d, s, r)
@@ -52,7 +53,7 @@ class ObstacleSmoother:
             if w[p] < phi[p]:
                 print('ERROR: inadmissible w[%d]=%e < phi[%d]=%e (m=%d)' \
                       % (p, w[p], p, phi[p], mesh1d.m))
-                sys.exit(0)
+                sys.exit(1)
 
     def _sweepindices(self, mesh1d, forward=True):
         '''Generate indices for sweep.'''
@@ -65,10 +66,12 @@ class ObstacleSmoother:
     def cpresidualnorm(self, mesh1d, s, r):
         '''Compute the norm of the residual values at nodes where the constraint
         is NOT active.  Where the constraint is active the residual r=F(s) in
-        the complementarity problem is allowed to have any positive value;
-        only the residual at inactive nodes is relevant to convergence.'''
+        the complementarity problem is allowed to have any positive value.
+        Thus we norm positive residual at inactive nodes and any
+        negative residual.'''
+        active = (s <= mesh1d.b)
         F = r.copy()
-        F[s <= mesh1d.b] = np.minimum(F[s <= mesh1d.b], 0.0)
+        F[active] = np.minimum(F[active], 0.0)
         return mesh1d.l2norm(F)
 
     def savestatenextresidual(self, name):
@@ -80,11 +83,12 @@ class ObstacleSmoother:
         '''Compute the residual functional, namely the surface kinematical
         residual for the entire domain, for a given iterate s.  In symbols
         matching the paper, returns  r = F(s)[.] - ella(.)  where . ranges over
-        hat functions on mesh1d.  Note mesh1D is a MeshLevel1D instance and
-        ella(.) = <a(x),.> in V^j' is the CMB.  This residual evaluation
-        calls extrudemesh() to set up an (x,z) Firedrake mesh by extrusion of a
-        (stored) base mesh.  If saveupname is a string then the Stokes
-        solution (u,p) is saved to that file.  The returned residual array is
+        hat functions on the mesh and ella(.) = <a(x),.> in V^j' is the CMB.
+        Input mesh1D is a MeshLevel1D instance.  Calls extrudemesh() to set up
+        a (x,z) Firedrake mesh by extrusion of a (stored) base mesh to the input
+        geometry s = s(x).  Reports on mesh creation if the base mesh has not
+        already been created.  If self.saveflag then the Stokes solution (u,p)
+        is saved to the file self.savename.  The returned residual array is
         defined on mesh1d and is in the dual space V^j'.'''
         # set up base mesh (if needed) and extruded mesh
         if not self.created:
@@ -92,9 +96,9 @@ class ObstacleSmoother:
         mesh = self.solver.extrudetogeometry(s, mesh1d.b,
                                              report=not self.created)
         # solve the Glen-Stokes problem on the extruded mesh
+        # (u,p,kres are all defined on the extruded mesh)
         u, p, kres = self.solver.solve(mesh, printsizes=not self.created)
-        if not self.created:
-            self.created = True
+        self.created = True
         if self.saveflag:
             self.solver.savestate(mesh, u, p, kres, savename=self.savename)
             self.saveflag = False
