@@ -15,11 +15,14 @@ run_4:
 run_5:
 	-@./testit.sh steady.py "-sweepsonly -monitor -smoother newtonrs -J 4 -fdeps 2.0 -cyclemax 1 -band 2" 1 5 "steady newtonrs"
 
-test_steady: run_1 run_2 run_3 run_4 run_5
+run_6:
+	-@./testit.sh steady.py "-sweepsonly -cyclemax 1 -smoother newtonrs -nocoloring -newt_ksp_view_mat -J 3 -band 2" 1 6 "print pentadiagonal Jacobian approx"
+
+test_steady: run_1 run_2 run_3 run_4 run_5 run_6
 
 test: test_steady
 
-.PHONY: clean test_steady test run_1 run_2 run_3 run_4 run_5
+.PHONY: clean test_steady test run_1 run_2 run_3 run_4 run_5 run_6
 
 clean:
 	@rm -f maketmp tmp difftmp *.png *.pdf
