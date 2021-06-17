@@ -3,8 +3,6 @@ mesh: base has 8 intervals; 2 are ice-free
       extruded has 6 x 4 icy quad elements
       dimensions n_u = 242, n_p = 37
    0: 6.3623e+00
-      [coloring off]
    1: 4.3448e+00
-      [coloring off]
    2: 1.1124e+00
 iteration CONVERGED at step 2 by F<(2.00e-01)F0

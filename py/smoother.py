@@ -123,7 +123,17 @@ class ObstacleSmoother:
         np.maximum(s - self.args.omega * r, mesh1d.b, s)
         return []
 
-    def _gsslowsweep(self, mesh1d, s, ella, r, dump=False):
+    def _pointfdupdate(self, s, b, r, rperturb):
+        '''Return the updated s value at one location.  (For pointwise
+        smoothers only.)'''
+        d = (rperturb - r) / self.args.fdeps
+        if d > 0.0:
+            snew = max(s - self.args.omega * r / d, b)
+        else:
+            snew = b
+        return snew, d
+
+    def _gsslowsweep(self, mesh1d, s, ella, r):
         '''Do in-place projected nonlinear Gauss-Seidel smoothing on s(x)
         where the diagonal entry d_i = F'(s)[psi_i,psi_i] is computed
         by VERY SLOW finite differencing of expensive residual calculations
@@ -137,14 +147,9 @@ class ObstacleSmoother:
         for j in range(1, mesh1d.m+1): # loop over interior nodes
             sperturb = s.copy()
             sperturb[j] += self.args.fdeps
-            if dump:
-                self.savestatenextresidual(self.args.o + '_gs_%d.pvd' % j)
             rperturb = self.residual(mesh1d, sperturb, ella)
-            d = (rperturb[j] - r[j]) / self.args.fdeps
-            if d > 0.0:
-                s[j] = max(s[j] - self.args.omega * r[j] / d, mesh1d.b[j])
-            else:
-                s[j] = mesh1d.b[j]
+            s[j], d = self._pointfdupdate(s[j], mesh1d.b[j], r[j], rperturb[j])
+            if d <= 0.0:
                 negd.append(j)
             # must recompute residual for s (nonlocal!)
             r = self.residual(mesh1d, s, ella)
@@ -153,22 +158,19 @@ class ObstacleSmoother:
     def _colors(self, mesh1d, s):
         '''Compute c which is the number of colors and the gap between nodes
         with the same color.  Nodes of the same color are separated by
-        cperthickness times the maximum ice thickness.  Set -cperthickness X
-        where X is greater than ice sheet width to turn off coloroing.  (Thus
-        VERY SLOW finite differencing without coloring.)'''
+        a multiple of the maximum ice thickness; -cperthickness X sets this
+        multiple.'''
         thkmax = max(s - mesh1d.b)
-        if thkmax == 0.0:
+        if thkmax == 0.0 or self.args.nocoloring:
             c = mesh1d.m + 1
         else:
             c = int(np.ceil(self.args.cperthickness * thkmax / mesh1d.h))
             c = min([c, mesh1d.m + 1])
-        if c >= mesh1d.m + 1:
-            print('      [coloring off]')
-        else:
+        if c < mesh1d.m + 1:
             print('      c = %d colors' % c)
         return c
 
-    def _jacobicolorsweep(self, mesh1d, s, ella, r, dump=False):
+    def _jacobicolorsweep(self, mesh1d, s, ella, r):
         '''Do in-place projected nonlinear Jacobi smoothing on s(x)
         where the diagonal entry d_i = F'(s)[psi_i,psi_i] is computed
         by SLOW finite differencing of expensive residual calculations, but
@@ -187,23 +189,18 @@ class ObstacleSmoother:
             jlist = np.arange(k+1, mesh1d.m+1, c, dtype=int)
             sperturb = s.copy()
             sperturb[jlist] += self.args.fdeps
-            if dump:
-                self.savestatenextresidual(self.args.o + '_jacobi_%d.pvd' % j)
             rperturb = self.residual(mesh1d, sperturb, ella)
             for j in jlist:
-                d = (rperturb[j] - r[j]) / self.args.fdeps
-                if d > 0.0:
-                    snew[j] = max(s[j] - self.args.omega * r[j] / d,
-                                  mesh1d.b[j])
-                else:
-                    snew[j] = mesh1d.b[j]
+                snew[j], d = self._pointfdupdate(s[j], mesh1d.b[j], r[j],
+                                                 rperturb[j])
+                if d <= 0.0:
                     negd.append(j)
         # check on whether coloring scheme hit each node
         self._checkadmissible(mesh1d, snew, mesh1d.b)
         s[:] = snew[:] # in-place copy
         return negd
 
-    def _fdjacobianband(self, mesh1d, s, ella, currentr=None, dump=False):
+    def _fdjacobianband(self, mesh1d, s, ella, currentr=None):
         '''Compute a banded approximation A of the Jacobian, using coloring,
         by evaluating the residual function.  A is band-limited to [-b,b]
         around the diagonal where b=args.band.  Note b=0 gives diagonal and
@@ -227,9 +224,6 @@ class ObstacleSmoother:
             #    (note jlist = [k+1,] (singleton) if k+1+c >= mesh1d.m+1)
             sperturb = s.copy()
             sperturb[nodelist] += self.args.fdeps
-            if dump:
-                self.savestatenextresidual(self.args.o \
-                                           + '_newtonrs_color%d.pvd' % k)
             rperturb = self.residual(mesh1d, sperturb, ella)
             # fill k-colored rows by finite differences
             for jnode in nodelist:

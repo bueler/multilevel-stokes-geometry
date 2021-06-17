@@ -4,7 +4,7 @@ run_1:
 	-@./testit.sh steady.py "-sweepsonly -monitor -irtol 0.2 -J 2 -smoother richardson -omega 600" 1 1 "steady coarse richardson"
 
 run_2:
-	-@./testit.sh steady.py "-sweepsonly -monitor -irtol 0.2 -J 2 -smoother jacobicolor -cperthickness 1.0e10 -fdeps 1.0" 1 2 "steady coarse jacobi (coloring off)"
+	-@./testit.sh steady.py "-sweepsonly -monitor -irtol 0.2 -J 2 -smoother jacobicolor -nocoloring -fdeps 1.0" 1 2 "steady coarse jacobi (coloring off)"
 
 run_3:
 	-@./testit.sh steady.py "-sweepsonly -monitor -irtol 0.2 -J 3 -Hmin 20.0 -smoother jacobicolor -fdeps 1.0" 1 3 "steady jacobicolor"

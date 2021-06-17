@@ -2,7 +2,6 @@
 '''Solve steady-geometry Stokes obstacle problem by a multilevel constraint decomposition method.'''
 
 # TODO:
-#  -2. add option to turn off coloring
 #  -1. add option to build full matrix (FD Jacobian) from initial state and stop
 #      (then test matrix splittings on it for their LFA smoother factor)
 #   0. fix the FD Jacobian scheme so that Hmin does not conflict
@@ -93,6 +92,8 @@ adda('-monitor', action='store_true', default=False,
      help='show CP residual norm at each step')
 adda('-mz', type=int, default=4, metavar='MZ',
      help='number of (x,z) extruded mesh levels (default=%(default)s)')
+adda('-nocoloring', action='store_true', default=False,
+     help='turn off coloring in smoother that use it')
 adda('-o', metavar='FILEROOT', type=str, default='',
      help='save .pvd and final image in .png to FILEROOT.*')
 adda('-oimage', metavar='FILE', type=str, default='',
