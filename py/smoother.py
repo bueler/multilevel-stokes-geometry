@@ -55,14 +55,6 @@ class ObstacleSmoother:
                       % (p, w[p], p, phi[p], mesh1d.m))
                 sys.exit(1)
 
-    def _sweepindices(self, mesh1d, forward=True):
-        '''Generate indices for sweep.'''
-        if forward:
-            ind = range(1, mesh1d.m+1)    # 1,...,m
-        else:
-            ind = range(mesh1d.m, 0, -1)  # m,...,1
-        return ind
-
     def cpresidualnorm(self, mesh1d, s, r):
         '''Compute the norm of the residual values at nodes where the constraint
         is NOT active.  Where the constraint is active the residual r=F(s) in
@@ -142,7 +134,7 @@ class ObstacleSmoother:
             s_i <- phi_i.
         Note s_i is updated immediately.'''
         negd = []
-        for j in range(1, len(s)-1): # loop over interior points
+        for j in range(1, mesh1d.m+1): # loop over interior nodes
             sperturb = s.copy()
             sperturb[j] += self.args.fdeps
             if dump:
