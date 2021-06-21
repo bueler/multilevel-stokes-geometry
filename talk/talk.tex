@@ -374,8 +374,7 @@ $$\ip{\Phi^h(s^h) - a}{r^h - s^h} \ge 0 \qquad \text{for all $r^h \in \mathcal{K
 \begin{itemize}
 \item \alert{smoothness suggests $s$ is better for multigrid}
     \begin{itemize}
-    \item \emph{corollary}. do not put ``fake ice'' where $s=b$
-    \item only solve for ice velocity where there is ice!
+    \item but \emph{do not} put ``fake ice'' where $s=b$; only solve for ice velocity where there is ice!
     \end{itemize}
 \end{itemize}
 \end{frame}
@@ -413,17 +412,13 @@ $z^j \ge \chi^j \iff s^j + z^j \ge b^j$
 
 \begin{frame}{multilevel constraint decomposition (MCD)}
 
-\begin{block}{strategy}
-decompose $\mathcal{K}^h$ using mesh hierarchy and then apply V-cycles
-\end{block}
-
 \begin{itemize}
 \item in V-cycle, on each level solve a VI:
     $$\ip{\Phi^j(s^j + z^j) - a^j}{v^j - z^j} \ge 0 \quad \text{ for all $v^j \ge \chi^j$}$$
 
 \item this strategy gives an $O(m\log m)$ solver for the Laplacian obstacle problem (Tai, 2003)
     \begin{itemize}
-    \item \only<1>{a multilevel VI strategy is the only hope for (near) optimality}\only<2>{\alert{a multilevel VI strategy is the only hope for (near) optimality}}
+    \item \alert{a multilevel VI strategy is the only hope for (near) optimality}
     \end{itemize}
 \item for IGP:
     \begin{itemize}
