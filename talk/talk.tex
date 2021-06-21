@@ -89,13 +89,10 @@
 \normalsize
 \vspace{10mm}
 \begin{itemize}
-\item<2> work in progress, with no results yet
+\item<2-3> work in progress
+\item<2-3> I am giving this talk at 4am my time
     \begin{itemize}
-    \item<2> low expectations, please
-    \end{itemize}
-\item<2> I am giving this talk at 4am my time
-    \begin{itemize}
-    \item<2> ditto
+    \item<3> low expectations, please
     \end{itemize}
 \end{itemize}
 \end{frame}
@@ -110,16 +107,16 @@
 
 \vspace{-1mm}
 \begin{itemize}
-\item glacier geometry which evolves according to climate
+\item glacier geometry evolution according to the climate?
     \begin{itemize}
     \item simplest such problem (grounded, nonsliding, isothermal)
     \end{itemize}
 \item assume time-independent data on fixed $\Omega \subset \RR^2$:
     \begin{itemize}
-    \item (net) climatic mass balance $a$ \hfill $\gets$ \emph{$a>0$ for accumulation}
-    \item bed elevation $b$
+    \item (net) climatic mass balance $a(x,y)$ \hfill $\gets$ \emph{$a>0$ for accumulation}
+    \item bed elevation $b(x,y)$
     \end{itemize}
-\item \emph{to compute}: surface elevation $s$ on $\Omega$ and icy domain $\Lambda_s \subset \RR^3$
+\item \emph{to compute}: surface elevation $s(t,x,y)$ on $\Omega$ \emph{and} icy domain $\Lambda_s \subset \RR^3$
 \end{itemize}
 \end{frame}
 
@@ -127,13 +124,8 @@
 \begin{frame}{surface kinematical equation}
 
 \begin{itemize}
-\item glaciers flow
-\item $\therefore$ must solve an equation for the surface elevation
-\item the surface kinematical equation (SKE) holds \emph{on} the ice
-\begin{align*}
-\frac{\partial s}{\partial t} - \bu|_s \cdot \bn_s - a &= 0 & &\text{\emph{evolving}} \\
--\bu|_s \cdot \bn_s - a &= 0 & &\text{\emph{steady state}}
-\end{align*}
+\item glaciers flow, so one must solve the surface kinematical equation (SKE) \emph{on} the ice
+    $$\frac{\partial s}{\partial t} - \bu|_s \cdot \bn_s - a = 0$$
 
     \begin{itemize}
     \item $\bn_s = \left<-s_x,-s_y,1\right>$  \, is an upward normal to the ice surface
@@ -164,7 +156,7 @@
 \begin{frame}{steady IGP strong form}
 
 \begin{itemize}
-\item the steady IGP free-boundary problem, for $s(x,y)$ on $\Omega$, is a \alert{nonlinear complementarity problem (NCP) for $s$ which is coupled to a non-Newtonian Stokes problem for $\bu,p$:}
+\item the \alert{steady} IGP is a \alert{nonlinear complementarity problem (NCP) for $s$}, a free-boundary problem, \alert{which is coupled to a non-Newtonian Stokes problem for $\bu,p$:}
 
 \vspace{-5mm}
 
@@ -197,7 +189,7 @@ s - b &\ge 0 && \text{on $\Omega$} & \tikzmark{ncptop} \\
 \end{frame}
 
 
-\begin{frame}{\alert{implicit} IGP strong form}
+\begin{frame}{implicit IGP strong form}
 
 \begin{itemize}
 \item solve one step of backward Euler for $s,\bu,p$ at new time $t^\ell$
@@ -228,16 +220,17 @@ s - b &\ge 0 && \text{on $\Omega$} \\
 \begin{frame}{existing ice sheet models}
 
 \begin{itemize}
-\item almost no one is solving the implicit IGP
+\item almost no one is solving such a implicit or steady IGP
     \begin{itemize}
     \item except Bueler (2016), Brinkerhoff et al (2017) (\emph{shallow})
     \item and Wirbel \& Jarosch (2020) (\emph{semi-coupled, fake ice layer})
     \item none are scalable (\emph{single level})
     \end{itemize}
-\item what are people doing instead, to get science?
+\item what are people doing instead, for production science?
     \begin{itemize}
     \item \alert{explicit time-stepping with $s \ge b$ enforced by truncation}
     \item often with shallow approximations, e.g.~PISM run below
+    \end{itemize}
 
 \medskip
 \begin{columns}
@@ -246,10 +239,6 @@ s - b &\ge 0 && \text{on $\Omega$} \\
     \column{0.3\textwidth}
         \scriptsize \emph{by Julien Seguinot}
 \end{columns}
-
-\medskip
-    \item \emph{my goals}: Stokes, unconditionally-stable steps, scalable
-    \end{itemize}
 \end{itemize}
 \end{frame}
 
@@ -268,14 +257,14 @@ $\Phi : s \mapsto - \bus \cdot \bn_s$
 \item to compute $\Phi(s)$: build $\Lambda_s$, solve weak-form Stokes problem
     $$F_{\Lambda_s}(\bu,p)[\bv,q] = \int_{\Lambda_s} 2 \nu_\eps D\bu : D\bv - p \Div\bv - (\Div\bu) q - \rhoi \bg \cdot \bv\,d\bx = 0,$$
 extract trace $\bus$, then extend $\Phi(s) = -\bus \cdot \bn_s$ by zero to $\Omega$
-\item regarding Stokes problem for fixed geometry:
+\item regarding this Stokes problem (for \emph{fixed} geometry):
     \begin{itemize}
     \item well-posed over $W_0^{1,\pp}(\Lambda_s)^3 \times L^\qq(\Lambda_s)$ (Jouvet \& Rappaz 2011)
     \item optimal solver exists (Isaac et al 2015)
     \end{itemize}
 \item $\therefore$ \, $\phi(s)$ is well-defined if $s$ is piecewise $C^1$
     \begin{itemize}
-    \item which is a regularity conjecture for the coupled theory
+    \item which is a regularity conjecture
     \end{itemize}
 \end{itemize}
 
@@ -300,9 +289,9 @@ find admissible $s \in \mathcal{K} = \{r \ge b\} \subset W^{1,\qq}(\Omega)$ so t
 for all $r \in \mathcal{K}$
 \end{block}
 
-\item well-posedness is completely open
+\item well-posedness is almost completely open
     \begin{itemize}
-    \item but existence holds for SIA version (Jouvet \& Bueler, 2012)
+    \item existence holds for SIA version (Jouvet \& Bueler, 2012)
     \end{itemize}
 
 \end{itemize}
@@ -327,7 +316,7 @@ for all $r \in \mathcal{K}$
     $$\Phi_{\text{SIA}}(s) = - \frac{\gamma}{\qq} (s-b)^{\qq} |\grad_2 s|^{\qq} - \grad_2 \cdot\left[\frac{\gamma}{\qq+1} (s-b)^{\qq+1} |\grad_2 s|^{\qq-2} \grad_2 s\right]$$
 
     \begin{itemize}
-    \item $\Phi$ is elliptic in the large
+    \item $\Phi$ is elliptic ``in the large''
     \item $\Phi$ is degenerate at the ice margin
     \end{itemize}
 \item yet common to say

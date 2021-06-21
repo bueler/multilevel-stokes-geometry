@@ -59,6 +59,7 @@ writeout('stokesdomain.pdf')
 plt.figure(figsize=(16,4))
 x, s, _ = genbasicfig(xshift=0.0)
 plt.text(x[300], s[300] + 1.2, r'$s$', fontsize=bigfsize, color='k')
+plt.text(x[500], s[500] - 1.2, r'$\Lambda_s$', fontsize=bigfsize, color='k')
 plt.arrow(10.0, 1.5, 1.0, 0.0,
           lw=1.5, head_width=0.1, color='k')
 plt.text(10.4, 1.6, r'$\Phi$', fontsize=bigfsize, color='k')
