@@ -82,17 +82,17 @@
 \begin{frame}{overview}
 \Large
 \begin{enumerate}
-\item explain the problem I'm obsessed with
-\item discuss the current barriers to success
+\item explain the problem I'm working on
+\item mention the (current) barriers to success
 \end{enumerate}
 
 \normalsize
 \vspace{10mm}
 \begin{itemize}
-\item<2-3> work in progress
-\item<2-3> I am giving this talk at 4am my time
+\item work in progress
+\item I am giving this talk at 4am my time
     \begin{itemize}
-    \item<3> low expectations, please
+    \item low expectations, please
     \end{itemize}
 \end{itemize}
 \end{frame}
@@ -107,16 +107,16 @@
 
 \vspace{-1mm}
 \begin{itemize}
-\item glacier geometry evolution according to the climate?
-    \begin{itemize}
-    \item simplest such problem (grounded, nonsliding, isothermal)
-    \end{itemize}
+\item how does glacier geometry evolve in response to the climate?
+\item only the simplest version (grounded, nonsliding, isothermal)
 \item assume time-independent data on fixed $\Omega \subset \RR^2$:
     \begin{itemize}
     \item (net) climatic mass balance $a(x,y)$ \hfill $\gets$ \emph{$a>0$ for accumulation}
     \item bed elevation $b(x,y)$
     \end{itemize}
-\item \emph{to compute}: surface elevation $s(t,x,y)$ on $\Omega$ \emph{and} icy domain $\Lambda_s \subset \RR^3$
+\item \emph{to compute}: surface elevation $s(t,x,y)$ on $\Omega$
+
+\hspace{20.5mm} icy domain $\Lambda_s \subset \RR^3$
 \end{itemize}
 \end{frame}
 
@@ -129,6 +129,8 @@
 
     \begin{itemize}
     \item $\bn_s = \left<-s_x,-s_y,1\right>$  \, is an upward normal to the ice surface
+
+\vspace{4mm}
     \item where \emph{not} on the ice: $a\le 0$
     \end{itemize}
 \end{itemize}
@@ -137,13 +139,13 @@
 \begin{columns}
     \column{0.55\textwidth}
         \begin{itemize}
-        \item assumed for this talk:
+        \item assumed:
             \begin{itemize}
             \item $s$ well-defined (no overhangs)
             \item $s=b$ where ice is not present
 
                 \begin{itemize}
-                \item[{\color{black} $\circ$}] $s$ is defined on all of $\Omega$
+                \item[{\color{black} $\therefore$}] $s$ is defined on all of $\Omega$
                 \end{itemize}
             \end{itemize}
         \end{itemize}
@@ -211,7 +213,7 @@ s - b &\ge 0 && \text{on $\Omega$} \\
 \end{align*}
 
     \begin{itemize}
-    \item very similar to steady IGP
+    \item \alert{very similar to steady IGP}
     \end{itemize}
 \end{itemize}
 \end{frame}
@@ -229,7 +231,7 @@ s - b &\ge 0 && \text{on $\Omega$} \\
 \item what are people doing instead, for production science?
     \begin{itemize}
     \item \alert{explicit time-stepping with $s \ge b$ enforced by truncation}
-    \item often with shallow approximations, e.g.~PISM run below
+    \item usually shallow approximations, e.g.~PISM run below
     \end{itemize}
 
 \medskip
@@ -262,7 +264,7 @@ extract trace $\bus$, then extend $\Phi(s) = -\bus \cdot \bn_s$ by zero to $\Ome
     \item well-posed over $W_0^{1,\pp}(\Lambda_s)^3 \times L^\qq(\Lambda_s)$ (Jouvet \& Rappaz 2011)
     \item optimal solver exists (Isaac et al 2015)
     \end{itemize}
-\item $\therefore$ \, $\phi(s)$ is well-defined if $s$ is piecewise $C^1$
+\item[$\therefore$] $\phi(s)$ is well-defined if $s$ is piecewise $C^1$
     \begin{itemize}
     \item which is a regularity conjecture
     \end{itemize}
@@ -274,19 +276,20 @@ extract trace $\bus$, then extend $\Phi(s) = -\bus \cdot \bn_s$ by zero to $\Ome
 \begin{frame}{IGP weak form is a variational inequality}
 
 \begin{itemize}
-\item using $\Phi$ gives a cleaner NCP over $\Omega$ for steady IGP:
+\item using $\Phi$ gives a cleaner NCP over $\Omega$ for the steady IGP:
 \begin{align*}
 s - b &\ge 0 \\
 \Phi(s) - a &\ge 0 \\
 (s - b) (\Phi(s) - a) &= 0
 \end{align*}
 
-\item NCP (strong form) $\leftrightarrow$ VI (weak form)
+    \begin{itemize}
+    \item recall NCP (strong form) $\leftrightarrow$ VI (weak form)
+    \end{itemize}
 
 \begin{block}{steady IGP weak form}
 find admissible $s \in \mathcal{K} = \{r \ge b\} \subset W^{1,\qq}(\Omega)$ so that
-    $$\ip{\Phi(s)-a}{r-s} \ge 0$$
-for all $r \in \mathcal{K}$
+    $$\ip{\Phi(s)-a}{r-s} \ge 0 \qquad \text{ for all } r \in \mathcal{K}$$
 \end{block}
 
 \item well-posedness is almost completely open
@@ -307,10 +310,10 @@ for all $r \in \mathcal{K}$
 \begin{itemize}
 \small
 \item $\Phi : \mathcal{K} \subset W^{1,\qq}(\Omega) \to W^{-1,\pp}(\Omega)$ where $\qq=4$ and $\pp=4/3$
-\item the Stokes stress balance is nonlocal so $\Phi$ is ``dense''
+\item the Stokes stress balance is nonlocal
     \begin{itemize}
-    \item $\Phi$ is some kind of integral operator (\emph{convolve with Stokeslets})
-    \item $\Phi$ is short range (\emph{concentrated near the diagonal})
+    \item $\Phi$ is integral operator (\emph{convolve with Stokeslets})
+    \item $\Phi$ is short range (\emph{dense but concentrated near the diagonal})
     \end{itemize}
 \item $\Phi \approx \Phi_{\text{SIA}}$ for shallow glaciers, a differential operator:
     $$\Phi_{\text{SIA}}(s) = - \frac{\gamma}{\qq} (s-b)^{\qq} |\grad_2 s|^{\qq} - \grad_2 \cdot\left[\frac{\gamma}{\qq+1} (s-b)^{\qq+1} |\grad_2 s|^{\qq-2} \grad_2 s\right]$$
@@ -422,9 +425,8 @@ $z^j \ge \chi^j \iff s^j + z^j \ge b^j$
     \end{itemize}
 \item for IGP:
     \begin{itemize}
-    \item for nonlinear VI, need additional FAS strategy {\Large\strut} \only<2>{{\color{ForestGreen} \, {\Large $\checkmark$}}}
-    \item each residual is nonlocal and expensive {\Large\strut} \only<2>{{\color{ForestGreen} \, {\Large $\checkmark$}}}
-    \item<2> {\color{ForestGreen} strategy implemented}
+    \item for nonlinear VI, need additional FAS strategy {\Large\strut} {\color{ForestGreen} \, {\Large $\checkmark$}}
+    \item \dots but each residual is nonlocal and expensive
     \end{itemize}
 \end{itemize}
 \end{frame}
@@ -467,34 +469,32 @@ $z^j \ge \chi^j \iff s^j + z^j \ge b^j$
 \item smoother options from weaker to stronger:
     \begin{itemize}
     \item nonlinear Richardson?
-        \begin{itemize}
-        \item[{\color{black} $\circ$}] not promising because degenerate
-        \end{itemize}
-    \item nonlinear pointwise smoothers (GS, Jacobi)?
-        \begin{itemize}
-        \item[{\color{black} $\circ$}] \only<1>{GS extremely expensive because residual nonlocal} \only<2>{\alert{GS extremely expensive because residual nonlocal}}
-        \item[{\color{black} $\circ$}] seem to fail
-        \end{itemize}
     \item exploit SIA analogy?
         \begin{itemize}
         \item[{\color{black} $\circ$}] pointwise smoothers work for SIA
         \end{itemize}
-    \item nonlinear and nonlocal \texttt{PCPatch} smoothers?
+    \item nonlinear pointwise smoothers (GS, Jacobi)?
         \begin{itemize}
-        \item[{\color{black} $\circ$}] what does this even mean?
+        \item[{\color{black} $\circ$}] \alert{GS extremely expensive because residual nonlocal}
+        \item[{\color{black} $\circ$}] seem to fail
         \end{itemize}
+    %\item nonlinear and nonlocal \texttt{PCPatch} smoothers?
+    %    \begin{itemize}
+    %    \item[{\color{black} $\circ$}] what does this even mean?
+    %    \end{itemize}
     \item reduced-space Newton using banded Jacobian approximation?
         \begin{itemize}
         \item[{\color{black} $\circ$}] finite-difference Jacobian entries using pseudo-coloring
         \end{itemize}
     \end{itemize}
+\end{itemize}
+\end{frame}
 
-\medskip
-\item<2> status report:
-    \begin{itemize}
-    \item \alert{nothing works well so far}
-    \item NewtonRS and SIA-based smoothers most promising?
-    \end{itemize}
+
+\begin{frame}{status report}
+
+\begin{itemize}
+\item \alert{nothing works well so far}
 \end{itemize}
 \end{frame}
 
@@ -502,27 +502,29 @@ $z^j \ge \chi^j \iff s^j + z^j \ge b^j$
 \begin{frame}{conclusion}
 
 \begin{itemize}
-\item \emph{GOAL 1}:\, no shallow approximations in flow physics {\Large \strut} \only<2-3>{{\Large \color{ForestGreen} $\checkmark$}}
+\item \emph{GOAL 1}:\, no shallow approximations in flow physics
     \begin{itemize}
-    \item<2-3> my Stokes solver is working in Firedrake on extruded mesh
-    \item<2-3> solver choices by (Isaac et al, 2015) putatively optimal
+    \item[{\Large \color{ForestGreen} $\checkmark$}] Stokes solver working in Firedrake on extruded mesh
+    \item[{\Large \color{ForestGreen} $\checkmark$}] solver choices by (Isaac et al, 2015) putatively optimal
     \end{itemize}
-\item \emph{GOAL 2}:\, beat explicit time-stepping and enable long-time paleo simulations {\Large \strut} \only<3>{\Large \alert{:-(}}
+\item \emph{GOAL 2}:\, beat explicit time-stepping
     \begin{itemize}
-    \item<2-3> problem is
+    \item[{\Large \color{ForestGreen} $\checkmark$}] observe that problem is
         \begin{itemize}
-        \item<2-3>[{\color{black} $\circ$}] constrained (nonlinear VI on $\mathcal{K} = \{s\ge b\}$)
-        \item<2-3>[{\color{black} $\circ$}] diffusive in the large (Stokes $\approx$ SIA)
-        \item<2-3>[{\color{black} $\circ$}] nonlocal (Stokes)
+        \item[{\color{black} $\circ$}] constrained (nonlinear VI on $\mathcal{K} = \{s\ge b\}$)
+        \item[{\color{black} $\circ$}] diffusive in the large (Stokes $\approx$ SIA)
+        \item[{\color{black} $\circ$}] nonlocal (Stokes)
         \end{itemize}
-    \item<2-3> {\color{ForestGreen} MCD FAS path to optimality for solving the VI}
-    \item<3> \alert{stuck on finding a robust optimal smoother}
+    \item[{\Large \color{ForestGreen} $\checkmark$}] MCD FAS path to optimality for solving the VI
+    \item[{\Large \alert{:-(}}] \alert{stuck on finding a robust, efficient smoother}
     \end{itemize}
-
-\normalsize
-\bigskip\bigskip
-\item<3> \emph{thanks for your attention \dots questions?}
 \end{itemize}
+
+\begin{block}{ultimate goal}
+for better science, enable long-time (paleo) simulations without shallow approximations
+\end{block}
+
+\emph{thanks for your attention \dots questions?}
 \end{frame}
 
 %\begin{block}{Block}
