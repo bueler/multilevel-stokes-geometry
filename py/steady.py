@@ -10,8 +10,10 @@
 #   3. copy mg-glaciers/py/mcdn.py and build it out
 
 # RUNS:
-#   actually converges
-#      ./steady.py -sweepsonly -J JJ -smoother jacobislow -Hmin HH
+#   visualized run:
+#      ./steady.py -sweepsonly -monitor -irtol 0.1 -J 5 -Hmin 20.0 -smoother jacobicolor -fdeps 1.0 -mz 8 -o foo -oimage foo
+#   actually converges [FIXME]
+#      ./steady.py -sweepsonly -J JJ -smoother gsslow -Hmin HH
 #      with JJ=1,2,3,4,5 and HH=0,10,100;  HH=0 seems as good as any
 #      also sort of works with JJ=6 when HH=100 and -mz 8
 #      also works with -smoother gsslow
