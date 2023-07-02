@@ -11,7 +11,7 @@ This is a draft of
 
 ## py/
 
-Codes in this directory support the above paper.  A copy of repository https://bitbucket.org/pefarrell/fascd/src/master/ is required; the ideas of FASCD are documented by the paper in https://github.com/bueler/mcd-extended:
+Python/Firedrake codes in this directory support the above paper.  A copy of repository https://bitbucket.org/pefarrell/fascd/src/master/ is required; the ideas of FASCD are documented by the paper in https://github.com/bueler/mcd-extended:
 
   * E. Bueler & P. Farrell (in preparation), A full approximation scheme
     multilevel method for nonlinear variational inequalities
