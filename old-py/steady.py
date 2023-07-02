@@ -50,8 +50,8 @@ Initial implementation generates a dome geometry on a flat bed as initial state
 and then tries to converge from there.
 
 References:
-  * Bueler, E. and Mitchell, L. (2022). Multilevel computation of glacier
-    geometry from Stokes dynamics.  In preparation.
+  * Bueler, E. and Mitchell, L. (in preparation). Multilevel computation of glacier
+    geometry from Stokes dynamics.
   * Tai, X.-C. (2003). Rate of convergence for some constraint
     decomposition methods for nonlinear variational inequalities.
     Numer. Math. 93 (4), 755--786.
