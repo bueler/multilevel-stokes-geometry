@@ -11,4 +11,4 @@ or
 Then do:
 
         source ~/firedrake/bin/activate                   # activate Firedrake venv
-        python3 moveice.py                                # FIXME try a run
+        python3 moveice.py

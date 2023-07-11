@@ -1,0 +1,7 @@
+all:
+
+.PHONY: clean
+
+clean:
+	@rm -f *.pyc *.pvd *.pvtu *.vtu
+	@rm -rf __pycache__ .pytest_cache/

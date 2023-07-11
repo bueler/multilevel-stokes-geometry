@@ -1,14 +1,20 @@
 from argparse import ArgumentParser, RawTextHelpFormatter
 parser = ArgumentParser(description="""
 Solve 2D steady ice geometry problem, i.e. surface kinematical equation
-VI problem, where ice surface velocity is fake.  This is an advection
-VI.  Compare pefarrell/fascd/examples/sia.py
+VI problem, where ice surface velocity is fake.  Solves
+   < F(s), q - s > >= 0   for all q
+where F is diffusion-regularized surface kinematical operator
+   F(s) = - eps grad^2 s - u_s . n_s - a
+and eps>0 is small.  This is a (regularized) advection VI.  Compare to
+F in fascd/examples/sia.py, which models flow by SIA.
 """,
     formatter_class=RawTextHelpFormatter)
 parser.add_argument('-bumps', action='store_true', default=False,
                     help='generate bumpy, but smooth, bed topography')
-parser.add_argument('-levs', type=int, default=5, metavar='L',
-                    help='number of mesh levels [default 5]')
+parser.add_argument('-eps', type=float, default=0.001, metavar='EPS',
+                    help='diffusivity regularization in weak form [default 0.001]')
+parser.add_argument('-levs', type=int, default=4, metavar='L',
+                    help='number of mesh levels [default 4]')
 parser.add_argument('-mcoarse', type=int, default=10, metavar='MC',
                     help='number of cells in each direction in coarse mesh [default=10]')
 parser.add_argument('-nofas', action='store_true', default=False,
@@ -17,6 +23,11 @@ parser.add_argument('-o', metavar='FILE', type=str, default='',
                     help='output file name for Paraview format (.pvd)')
 parser.add_argument('-quad', action='store_true', default=False,
                     help='Q1 instead of P1')
+parser.add_argument('-uscale', type=float, default=30.0, metavar='X',
+                    help='scale of velocity, in m/a [default 30.0]')
+parser.add_argument('-velocity', type=str, default='constant', metavar='X',
+                    choices = ['constant','radial','rotate'],
+                    help='choose velocity field')
 args, unknown = parser.parse_known_args()
 
 assert args.levs >= 1, 'at least one level required'
@@ -72,17 +83,18 @@ def bumpybed(x):
         + 0.5 * sin(19*pi*xx) * sin(11*pi*yy) + 0.5 * sin(12*pi*xx) * sin(17*pi*yy)
     return b
 
-def fakevelocity(H, x):
-    '''Generate a fake 3D velocity field at surface of ice.
-    Has zero z component.  Note 0 <= thresh(H) <= 1.'''
-    U0 = 200.0 / secpera            # velocity scale is U0 = 200 m/a
-    H0 = 1000.0                     # velocity is smoothly chopped around H0 = 1000
-    c = 1.0 - exp(-3.0)
-    k = H0 / (1.0 + ln(c))
-    thresh = 1.0 - c * exp(-H / k)  # thresh=0.05 at H=0, thresh=0.63 at H=H0
+def fakevelocity(x):
+    '''Generate a fake 3D velocity field at surface of ice, with zero z component.'''
+    U0 = args.uscale / secpera
+    if args.velocity == 'constant':
+        return as_vector([Constant(U0), Constant(U0), 0.0])
     xx = x - as_vector([xc, xc])
-    U = U0 * thresh * xx / xc
-    return as_vector([0.6 * U[0], U[1], 0.0])
+    if args.velocity == 'radial':  # the bad case!
+        return as_vector([U0 * xx[0] / xc, U0 * xx[1] / xc, 0.0])
+    elif args.velocity == 'rotate':
+        return as_vector([- U0 * xx[1] / xc, U0 * xx[0] / xc, 0.0])
+    else:
+        raise NotImplementedError
 
 base = RectangleMesh(args.mcoarse, args.mcoarse, L, L, quadrilateral=args.quad)
 mh = MeshHierarchy(base, args.levs-1)
@@ -102,27 +114,14 @@ else:
     lb = interpolate(Constant(0), V)
 lb.rename("lb = bedrock topography")
 
-W = VectorFunctionSpace(mesh, 'CG', 1, dim=3)
-Us = Function(W).interpolate(fakevelocity(dome(x), x))
-
-# FIXME I need to think about advection-dominated VI problems!
-# with these settings i can get
-#   python3 moveice.py -levs 2 -nofas -o foo.pvd -snes_max_it 50
-# to work
-
-Deps = 0.01
-v = TestFunction(V)
-# F is weak form of
-#    - u_s . n_s - a = 0
-# compare following to F in fascd/examples/sia.py
+Wvelocity = VectorFunctionSpace(mesh, 'CG', 1, dim=3)
+Us = Function(Wvelocity).interpolate(fakevelocity(x))
 ns = as_vector([-s.dx(0), -s.dx(1), 1.0])
-F = Deps * inner(grad(s), grad(v)) * dx + inner(- inner(Us, ns) - a, v) * dx
+v = TestFunction(V)
+F = args.eps * inner(grad(s), grad(v)) * dx + (-inner(Us, ns) - a) * v * dx
 
-# FIXME note performance is the same independent of bcs.  not really a hint
-
-#bcs = DirichletBC(V, 0, "on_boundary")
-#problem = NonlinearVariationalProblem(F, s, bcs)
-problem = NonlinearVariationalProblem(F, s, None)
+bcs = DirichletBC(V, 0, "on_boundary")
+problem = NonlinearVariationalProblem(F, s, bcs)
 
 s.assign(lb)  # initialize to zero thickness (s-lb=0), thus admissible
 
@@ -140,13 +139,13 @@ if args.nofas:
         "pc_type": "lu",
         "pc_factor_mat_solver_type": "mumps"}
     solver = NonlinearVariationalSolver(problem, solver_parameters=sp, options_prefix="")
-    solver.solve(bounds=(lb, interpolate(Constant(5000.0),V)))
+    solver.solve(bounds=(lb, interpolate(Constant(50000.0),V)))
 else:
     sp = {#"fascd_monitor": None,
         "fascd_converged_reason": None,
-        "fascd_rtol": 1.0e-3,  # can be tightened to 1.0e-4 without changing discretization error
+        "fascd_rtol": 1.0e-4,
         "fascd_atol": 1.0e-6,
-        "fascd_max_it": 50,
+        "fascd_max_it": 20,
         "fascd_cycle_type": "full",  # or "nested"
         "fascd_full_iterations": 2,
         #"fascd_levels_snes_type": "vinewtonssls",
@@ -154,7 +153,7 @@ else:
         "fascd_levels_snes_linesearch_type": "bt",
         "fascd_levels_snes_linesearch_order": "2",  # order 1 broken in older petsc, but fixed?
         #"fascd_levels_snes_monitor": None,
-        "fascd_levels_snes_converged_reason": None,
+        #"fascd_levels_snes_converged_reason": None,
         "fascd_levels_ksp_type": "gmres",
         "fascd_levels_ksp_max_it": 3,
         "fascd_levels_ksp_converged_maxits": None,
@@ -166,7 +165,7 @@ else:
         "fascd_coarse_snes_linesearch_type": "bt",
         "fascd_coarse_snes_linesearch_order": "2",
         "fascd_coarse_snes_linesearch_damping": 0.7,
-        "fascd_coarse_snes_converged_reason": None,
+        #"fascd_coarse_snes_converged_reason": None,
         #"fascd_coarse_snes_monitor": None,
         "fascd_coarse_ksp_type": "preonly",
         #"fascd_coarse_pc_type": "lu",
@@ -177,20 +176,28 @@ else:
         "fascd_coarse_snes_atol": 1.0e-6}
     import sys
     sys.path.append('fascd/')  # needed so FASCDSolver can find operators, nlvsrhs, etc.
-    from fascd.fascd import FASCDSolver
+    from fascd import FASCDSolver
+    #from fascd.fascd import FASCDSolver
     solver = FASCDSolver(problem, solver_parameters=sp, options_prefix="", bounds=(lb, None),
                          admiss_eps=1.0,  # 1.0 meter error gets truncated in Vcycle
                          debug_figures1d=False, warnings_convergence=True)
     solver.solve()
 
 from firedrake.petsc import PETSc
+icevol = assemble((s - lb) * dx)
+with s.dat.vec_ro as vs:
+    _, smax = abs(vs).max()
 mfine = args.mcoarse * 2**(args.levs-1)
-PETSc.Sys.Print('done (%s): mcoarse=%d, %d levels, %d x %d mesh, h=%.3f km' \
-                % ('bumps' if args.bumps else 'dome',
-                   args.mcoarse,args.levs,mfine,mfine,L/(1000*mfine)))
+PETSc.Sys.Print('done (%s, %s velocity):' \
+                   % ('bumps' if args.bumps else 'dome', args.velocity))
+PETSc.Sys.Print('    mcoarse=%d, %d levels, %d x %d mesh, h=%.3f km' \
+                % (args.mcoarse,args.levs,mfine,mfine,L/(1000*mfine)))
+PETSc.Sys.Print('    ice volume = %.4e km^3,  max s = %.2f m' \
+                % (icevol / 1.0e9, smax))
 
 if args.o:
     Us *= secpera
     Us.rename("U_s = surface velocity (m/a)")
+    sdome = Function(V, name="sdome (for reference)").interpolate(dome(x))
     PETSc.Sys.Print('writing to %s ...' % args.o)
-    File(args.o).write(a,s,Us,lb)
+    File(args.o).write(a,s,sdome,Us,lb)
